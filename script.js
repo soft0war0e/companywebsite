@@ -2806,3 +2806,409 @@ function initAboutSectionEffects() {
     
     animate();
 }
+// Create 3D floating logo in the navbar
+function create3DLogo() {
+    const logoContainer = document.querySelector('.logo');
+    if (!logoContainer) return;
+    
+    // Clear existing content
+    const logoText = logoContainer.textContent;
+    logoContainer.innerHTML = '';
+    
+    // Create canvas for 3D logo
+    const canvas = document.createElement('canvas');
+    canvas.width = 150;
+    canvas.height = 60;
+    logoContainer.appendChild(canvas);
+    
+    // Setup Three.js
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, canvas.width / canvas.height, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas,
+        antialias: true,
+        alpha: true
+    });
+    
+    renderer.setSize(canvas.width, canvas.height);
+    
+    // Add lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    
+    const pointLight = new THREE.PointLight(0x3a86ff, 1, 100);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
+    
+    // Create 3D text for "Sponsium"
+    const fontLoader = new THREE.FontLoader();
+    
+    // Create a temporary text element while 3D loads
+    const tempLogo = document.createElement('div');
+    tempLogo.style.cssText = `
+        font-family: 'Poppins', sans-serif;
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: var(--dark-color);
+        display: flex;
+    `;
+    tempLogo.innerHTML = `<span>Sponsium</span><span style="color: #3a86ff;">.</span>`;
+    logoContainer.appendChild(tempLogo);
+    
+    // Create a group for all logo elements
+    const logoGroup = new THREE.Group();
+    scene.add(logoGroup);
+    
+    // Create a glowing sphere for the dot
+    const dotGeometry = new THREE.SphereGeometry(0.5, 32, 32);
+    const dotMaterial = new THREE.MeshPhongMaterial({
+        color: 0x3a86ff,
+        emissive: 0x3a86ff,
+        emissiveIntensity: 0.7,
+        shininess: 100
+    });
+    
+    const dot = new THREE.Mesh(dotGeometry, dotMaterial);
+    dot.position.set(4.5, -0.5, 0);
+    logoGroup.add(dot);
+    
+    // Add orbital particles around the dot
+    const particlesCount = 20;
+    const particles = [];
+    
+    for (let i = 0; i < particlesCount; i++) {
+        const particleGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const particleMaterial = new THREE.MeshPhongMaterial({
+            color: 0x3a86ff,
+            emissive: 0x3a86ff,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.7
+        });
+        
+        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+        
+        // Set initial position in orbit around dot
+        const angle = (i / particlesCount) * Math.PI * 2;
+        const radius = 0.7;
+        
+        particle.position.x = dot.position.x + Math.cos(angle) * radius;
+        particle.position.y = dot.position.y + Math.sin(angle) * radius;
+        particle.position.z = dot.position.z;
+        
+        // Store orbit data
+        particle.userData = {
+            orbitRadius: radius,
+            orbitSpeed: 0.01 + Math.random() * 0.02,
+            orbitAngle: angle,
+            pulseSpeed: Math.random() * 2 + 1
+        };
+        
+        logoGroup.add(particle);
+        particles.push(particle);
+    }
+    
+    // Create extruded 3D text for "Sponsium"
+    const createLogoText = () => {
+        // Use a fallback approach with individual letters for better compatibility
+        const letters = "Sponsium";
+        const letterMeshes = [];
+        const letterSpacing = 0.8;
+        
+        for (let i = 0; i < letters.length; i++) {
+            // Create geometry for each letter
+            let geometry;
+            
+            // Use different geometries based on letter shape
+            switch(letters[i].toLowerCase()) {
+                case 's':
+                    geometry = new THREE.TorusGeometry(0.3, 0.1, 8, 12, Math.PI);
+                    break;
+                case 'o':
+                    geometry = new THREE.TorusGeometry(0.3, 0.1, 8, 16);
+                    break;
+                case 'p':
+                    // Combine a box and a torus for 'p'
+                    geometry = new THREE.BoxGeometry(0.1, 0.6, 0.1);
+                    const pMesh = new THREE.Mesh(
+                        geometry,
+                        new THREE.MeshPhongMaterial({
+                            color: 0x1a1a2e,
+                            shininess: 80
+                        })
+                    );
+                    pMesh.position.y = -0.15;
+                    
+                    const pCircle = new THREE.Mesh(
+                        new THREE.TorusGeometry(0.25, 0.1, 8, 12, Math.PI),
+                        new THREE.MeshPhongMaterial({
+                            color: 0x1a1a2e,
+                            shininess: 80
+                        })
+                    );
+                    pCircle.rotation.z = Math.PI / 2;
+                    pCircle.position.x = 0.25;
+                    
+                    const pGroup = new THREE.Group();
+                    pGroup.add(pMesh);
+                    pGroup.add(pCircle);
+                    
+                    letterMeshes.push(pGroup);
+                    continue;
+                case 'n':
+                    // Create a custom 'n' shape
+                    const nGroup = new THREE.Group();
+                    
+                    const nLeft = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.1, 0.6, 0.1),
+                        new THREE.MeshPhongMaterial({
+                            color: 0x1a1a2e,
+                            shininess: 80
+                        })
+                    );
+                    
+                    const nRight = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.1, 0.6, 0.1),
+                        new THREE.MeshPhongMaterial({
+                            color: 0x1a1a2e,
+                            shininess: 80
+                        })
+                    );
+                    nRight.position.x = 0.4;
+                    
+                    const nMiddle = new THREE.Mesh(
+                        new THREE.BoxGeometry(0.5, 0.1, 0.1),
+                        new THREE.MeshPhongMaterial({
+                            color: 0x1a1a2e,
+                            shininess: 80
+                        })
+                    );
+                    nMiddle.position.x = 0.2;
+                    nMiddle.position.y = 0.2;
+                    
+                    nGroup.add(nLeft);
+                    nGroup.add(nRight);
+                    nGroup.add(nMiddle);
+                    
+                    letterMeshes.push(nGroup);
+                    continue;
+                default:
+                    // Default to a box for other letters
+                    geometry = new THREE.BoxGeometry(0.2, 0.6, 0.1);
+            }
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x1a1a2e,
+                shininess: 80
+            });
+            
+            const letterMesh = new THREE.Mesh(geometry, material);
+            letterMeshes.push(letterMesh);
+        }
+        
+        // Position letters horizontally
+        let xOffset = -3.5;
+        letterMeshes.forEach(letterMesh => {
+            letterMesh.position.x = xOffset;
+            xOffset += letterSpacing;
+            logoGroup.add(letterMesh);
+        });
+    };
+    
+    createLogoText();
+    
+    // Add a glowing underline
+    const underlineGeometry = new THREE.BoxGeometry(8, 0.1, 0.1);
+    const underlineMaterial = new THREE.MeshPhongMaterial({
+        color: 0x3a86ff,
+        emissive: 0x3a86ff,
+        emissiveIntensity: 0.3,
+        transparent: true,
+        opacity: 0.7
+    });
+    
+    const underline = new THREE.Mesh(underlineGeometry, underlineMaterial);
+    underline.position.y = -0.8;
+    logoGroup.add(underline);
+    
+    // Position camera
+    camera.position.z = 10;
+    
+    // Make logo interactive with mouse hover
+    let isHovered = false;
+    
+    logoContainer.addEventListener('mouseenter', () => {
+        isHovered = true;
+        tempLogo.style.opacity = '0';
+    });
+    
+    logoContainer.addEventListener('mouseleave', () => {
+        isHovered = false;
+        tempLogo.style.opacity = '1';
+    });
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = Date.now() * 0.001;
+        
+        // Rotate logo slightly based on mouse position
+        if (isHovered) {
+            logoGroup.rotation.y = Math.sin(time * 0.5) * 0.2;
+            logoGroup.rotation.x = Math.cos(time * 0.5) * 0.1;
+            
+            // Scale up slightly when hovered
+            logoGroup.scale.set(1.05, 1.05, 1.05);
+        } else {
+            // Return to original position when not hovered
+            logoGroup.rotation.y *= 0.95;
+            logoGroup.rotation.x *= 0.95;
+            logoGroup.scale.x = Math.max(logoGroup.scale.x * 0.95, 1);
+            logoGroup.scale.y = Math.max(logoGroup.scale.y * 0.95, 1);
+            logoGroup.scale.z = Math.max(logoGroup.scale.z * 0.95, 1);
+        }
+        
+        // Animate dot
+        dot.scale.x = 1 + 0.1 * Math.sin(time * 2);
+        dot.scale.y = 1 + 0.1 * Math.sin(time * 2);
+        dot.scale.z = 1 + 0.1 * Math.sin(time * 2);
+        
+        // Animate particles orbiting the dot
+        particles.forEach(particle => {
+            // Update orbit position
+            particle.userData.orbitAngle += particle.userData.orbitSpeed;
+            const radius = particle.userData.orbitRadius;
+            
+            particle.position.x = dot.position.x + Math.cos(particle.userData.orbitAngle) * radius;
+            particle.position.y = dot.position.y + Math.sin(particle.userData.orbitAngle) * radius;
+            
+            // Pulse opacity
+            particle.material.opacity = 0.5 + 0.3 * Math.sin(time * particle.userData.pulseSpeed);
+        });
+        
+        // Animate underline
+        underline.material.opacity = 0.5 + 0.3 * Math.sin(time * 1.5);
+        underline.position.y = -0.8 + 0.05 * Math.sin(time * 2);
+        
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+    
+    // Add a futuristic scanning effect
+    const scanEffect = document.createElement('div');
+    scanEffect.classList.add('logo-scan-effect');
+    scanEffect.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 5px;
+        height: 100%;
+        background: linear-gradient(to right, 
+            rgba(58, 134, 255, 0), 
+            rgba(58, 134, 255, 0.8), 
+            rgba(58, 134, 255, 0));
+        pointer-events: none;
+        opacity: 0.7;
+        z-index: 1;
+    `;
+    logoContainer.appendChild(scanEffect);
+    
+    // Animate the scan effect
+    let scanPosition = 0;
+    const scanSpeed = 1;
+    
+    function animateScanEffect() {
+        scanPosition += scanSpeed;
+        
+        if (scanPosition > canvas.width) {
+            scanPosition = -5;
+        }
+        
+        scanEffect.style.left = `${scanPosition}px`;
+        requestAnimationFrame(animateScanEffect);
+    }
+    
+    animateScanEffect();
+    
+    // Add holographic glitch effect occasionally
+    setInterval(() => {
+        if (Math.random() > 0.7) {
+            // Create glitch effect
+            const glitchEffect = document.createElement('div');
+            glitchEffect.classList.add('logo-glitch-effect');
+            
+            const glitchHeight = 2 + Math.random() * 5;
+            const glitchTop = Math.random() * canvas.height;
+            
+            glitchEffect.style.cssText = `
+                position: absolute;
+                top: ${glitchTop}px;
+                left: 0;
+                width: 100%;
+                height: ${glitchHeight}px;
+                background-color: rgba(58, 134, 255, 0.8);
+                pointer-events: none;
+                z-index: 2;
+                transform: translateX(${Math.random() * 10 - 5}px);
+            `;
+            
+            logoContainer.appendChild(glitchEffect);
+            
+            // Remove after short duration
+            setTimeout(() => {
+                logoContainer.removeChild(glitchEffect);
+            }, 50 + Math.random() * 150);
+        }
+    }, 2000);
+    
+    // Add data stream particles occasionally
+    setInterval(() => {
+        if (Math.random() > 0.8) {
+            const dataParticle = document.createElement('div');
+            dataParticle.classList.add('logo-data-particle');
+            
+            const size = 1 + Math.random() * 2;
+            const startX = Math.random() * canvas.width;
+            const startY = Math.random() * canvas.height;
+            const duration = 500 + Math.random() * 1000;
+            
+            dataParticle.style.cssText = `
+                position: absolute;
+                top: ${startY}px;
+                left: ${startX}px;
+                width: ${size}px;
+                height: ${size}px;
+                background-color: rgba(58, 134, 255, 0.8);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 2;
+                opacity: 0;
+                transform: translateY(0);
+                animation: dataParticleAnim ${duration}ms ease-out forwards;
+            `;
+            
+            // Add keyframe animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes dataParticleAnim {
+                    0% { opacity: 0; transform: translateY(0); }
+                    10% { opacity: 1; }
+                    100% { opacity: 0; transform: translateY(${Math.random() > 0.5 ? '-' : ''}${20 + Math.random() * 30}px); }
+                }
+            `;
+            
+            document.head.appendChild(style);
+            logoContainer.appendChild(dataParticle);
+            
+            // Remove after animation completes
+            setTimeout(() => {
+                if (logoContainer.contains(dataParticle)) {
+                    logoContainer.removeChild(dataParticle);
+                }
+                document.head.removeChild(style);
+            }, duration + 100);
+        }
+    }, 300);
+}
