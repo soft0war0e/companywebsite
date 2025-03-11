@@ -3623,14 +3623,37 @@ function initVoiceInteractions() {
             ripple.classList.add('active');
             feedback.classList.add('active');
             
-            // Update feedback and show visualizer
-            const commandsList = feedback.querySelector('.voice-commands');
-            if (commandsList) commandsList.style.display = 'none';
+            // Provide a comprehensive list of available commands
+            feedback.innerHTML = `
+                <strong>Available Commands:</strong>
+                <ul style="margin: 5px 0 5px 20px; padding: 0; text-align: left; font-size: 0.8rem;">
+                    <li>"scroll down" - move down one screen</li>
+                    <li>"scroll up" - move up one screen</li>
+                    <li>"home" - go to top of page</li>
+                    <li>"about" - go to About section</li>
+                    <li>"services" - go to Services section</li>
+                    <li>"tech" - go to Technologies section</li>
+                    <li>"contact" - go to Contact section</li>
+                </ul>
+                <div style="font-size: 0.8rem; margin-top: 5px;">Listening...</div>
+            `;
             
-            feedback.firstElementChild.textContent = 'Listening...';
-            visualizer.style.display = 'flex';
+            // Add visualizer to updated feedback
+            if (!feedback.querySelector('.voice-visualizer')) {
+                const visualizer = document.createElement('div');
+                visualizer.classList.add('voice-visualizer');
+                
+                // Add visualizer bars
+                for (let i = 0; i < 5; i++) {
+                    const bar = document.createElement('div');
+                    bar.classList.add('voice-visualizer-bar');
+                    bar.style.animationDelay = `${i * 0.1}s`;
+                    visualizer.appendChild(bar);
+                }
+                
+                feedback.appendChild(visualizer);
+            }
         } catch (e) {
-            feedback.textContent = 'Listening...';
             console.error('Speech recognition error:', e);
         }
     }
@@ -3695,6 +3718,9 @@ function initVoiceInteractions() {
     };
     
     // Show initial feedback briefly
+    feedback.innerHTML = `
+        Click the microphone and try saying "scroll down", "scroll up", "services", "home", "about", "tech", or "contact"
+    `;
     feedback.classList.add('active');
     setTimeout(() => {
         feedback.classList.remove('active');
