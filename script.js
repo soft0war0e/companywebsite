@@ -34,6 +34,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Initialize parallax effects
     initParallaxEffects();
+    
+    // Add floating 3D service icons
+    init3DServiceIcons();
+    
+    // Add 3D stat visualizations
+    init3DStats();
+    
+    // Add interactive contact form elements
+    enhanceContactSection();
+    
+    // Add footer 3D effects
+    addFooterEffects();
 });
 
 // Navigation menu toggle
@@ -1030,6 +1042,811 @@ function initTechCanvas() {
             // Pulse opacity
             ring.material.opacity = 0.3 + 0.2 * Math.sin(time * 2);
         });
+        
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+}
+
+// Add floating 3D service icons that replace the current flat icons
+function init3DServiceIcons() {
+    const serviceCards = document.querySelectorAll('.service-card');
+    
+    if (!serviceCards.length) return;
+    
+    // For each service card, create a mini 3D icon
+    serviceCards.forEach((card, index) => {
+        // Get the icon container
+        const iconContainer = card.querySelector('.service-icon');
+        if (!iconContainer) return;
+        
+        // Remove existing icon
+        iconContainer.innerHTML = '';
+        
+        // Create canvas for 3D icon
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('service-3d-icon');
+        canvas.width = 100;
+        canvas.height = 100;
+        iconContainer.appendChild(canvas);
+        
+        // Initialize Three.js scene
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: canvas,
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setSize(canvas.width, canvas.height);
+        
+        // Add lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0x3a86ff, 1, 100);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+        
+        // Create different 3D models based on service type
+        let geometry, material, mesh;
+        
+        switch(index) {
+            // AI Development - Brain shape
+            case 0:
+                geometry = new THREE.IcosahedronGeometry(1, 1);
+                material = new THREE.MeshPhongMaterial({
+                    color: 0x3a86ff,
+                    emissive: 0x3a86ff,
+                    emissiveIntensity: 0.3,
+                    wireframe: true
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                
+                // Add inner glow
+                const innerGeometry = new THREE.IcosahedronGeometry(0.8, 1);
+                const innerMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3a86ff,
+                    emissive: 0x3a86ff,
+                    emissiveIntensity: 0.7,
+                    transparent: true,
+                    opacity: 0.6
+                });
+                const innerMesh = new THREE.Mesh(innerGeometry, innerMaterial);
+                mesh.add(innerMesh);
+                break;
+                
+            // Machine Learning - Cube with data points
+            case 1:
+                // Create base cube
+                geometry = new THREE.BoxGeometry(1.5, 1.5, 1.5);
+                material = new THREE.MeshPhongMaterial({
+                    color: 0x8338ec,
+                    transparent: true,
+                    opacity: 0.7,
+                    wireframe: true
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                
+                // Add random data points inside the cube
+                const pointsGroup = new THREE.Group();
+                for (let i = 0; i < 20; i++) {
+                    const pointGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                    const pointMaterial = new THREE.MeshPhongMaterial({
+                        color: 0xffffff,
+                        emissive: 0xffffff,
+                        emissiveIntensity: 0.5
+                    });
+                    const point = new THREE.Mesh(pointGeometry, pointMaterial);
+                    
+                    // Position within cube bounds
+                    point.position.set(
+                        (Math.random() - 0.5) * 1.2, 
+                        (Math.random() - 0.5) * 1.2, 
+                        (Math.random() - 0.5) * 1.2
+                    );
+                    pointsGroup.add(point);
+                }
+                mesh.add(pointsGroup);
+                break;
+                
+            // NLP Solutions - Text bubble with particles
+            case 2:
+                // Create speech bubble shape
+                geometry = new THREE.SphereGeometry(1, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.8);
+                material = new THREE.MeshPhongMaterial({
+                    color: 0xff006e,
+                    transparent: true,
+                    opacity: 0.7,
+                    side: THREE.DoubleSide
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                
+                // Add floating text particles
+                const textParticles = new THREE.Group();
+                for (let i = 0; i < 15; i++) {
+                    // Small text-like bars
+                    const textGeometry = new THREE.BoxGeometry(
+                        (Math.random() * 0.3) + 0.1, 
+                        0.05, 
+                        0.05
+                    );
+                    const textMaterial = new THREE.MeshPhongMaterial({
+                        color: 0xffffff,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    const text = new THREE.Mesh(textGeometry, textMaterial);
+                    
+                    // Position them within the speech bubble
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 0.6;
+                    text.position.set(
+                        Math.cos(angle) * radius,
+                        Math.sin(angle) * radius - 0.1,
+                        0.5
+                    );
+                    
+                    text.userData = {
+                        floatSpeed: Math.random() * 0.01 + 0.005,
+                        originalY: text.position.y
+                    };
+                    
+                    textParticles.add(text);
+                }
+                mesh.add(textParticles);
+                mesh.rotation.x = -0.3;
+                break;
+                
+            // Computer Vision - Eye with scanning lines
+            case 3:
+                // Create eye shape
+                geometry = new THREE.SphereGeometry(1, 32, 32);
+                material = new THREE.MeshPhongMaterial({
+                    color: 0x1a1a2e,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                mesh = new THREE.Mesh(geometry, material);
+                
+                // Add iris
+                const irisGeometry = new THREE.CircleGeometry(0.5, 32);
+                const irisMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3a86ff,
+                    emissive: 0x3a86ff,
+                    emissiveIntensity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const iris = new THREE.Mesh(irisGeometry, irisMaterial);
+                iris.position.z = 0.9;
+                
+                // Add pupil
+                const pupilGeometry = new THREE.CircleGeometry(0.2, 32);
+                const pupilMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x000000,
+                    side: THREE.DoubleSide
+                });
+                const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+                pupil.position.z = 0.91;
+                
+                // Add scanning lines
+                const scanGroup = new THREE.Group();
+                for (let i = 0; i < 5; i++) {
+                    const scanGeometry = new THREE.PlaneGeometry(2, 0.05);
+                    const scanMaterial = new THREE.MeshPhongMaterial({
+                        color: 0xff006e,
+                        transparent: true,
+                        opacity: 0.5,
+                        side: THREE.DoubleSide
+                    });
+                    const scan = new THREE.Mesh(scanGeometry, scanMaterial);
+                    scan.position.y = -1 + (i * 0.5);
+                    scan.position.z = 1.1;
+                    scan.userData = {
+                        speed: 0.01 + (Math.random() * 0.01),
+                        direction: 1
+                    };
+                    scanGroup.add(scan);
+                }
+                
+                mesh.add(iris);
+                mesh.add(pupil);
+                mesh.add(scanGroup);
+                break;
+        }
+        
+        scene.add(mesh);
+        camera.position.z = 4;
+        
+        // Animation function
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Rotate the mesh
+            if (mesh) {
+                mesh.rotation.y += 0.01;
+                
+                // Different animations for different service icons
+                switch(index) {
+                    case 0: // AI Development
+                        mesh.rotation.x = Math.sin(time * 0.5) * 0.2;
+                        if (mesh.children[0]) {
+                            mesh.children[0].scale.set(
+                                1 + 0.1 * Math.sin(time * 2),
+                                1 + 0.1 * Math.sin(time * 2),
+                                1 + 0.1 * Math.sin(time * 2)
+                            );
+                        }
+                        break;
+                    
+                    case 1: // Machine Learning
+                        mesh.rotation.z += 0.005;
+                        if (mesh.children[0]) {
+                            const points = mesh.children[0].children;
+                            points.forEach((point, i) => {
+                                point.position.y += Math.sin(time + i) * 0.001;
+                                point.material.emissiveIntensity = 0.3 + 0.3 * Math.sin(time * 2 + i);
+                            });
+                        }
+                        break;
+                    
+                    case 2: // NLP Solutions
+                        if (mesh.children[0]) {
+                            const textParticles = mesh.children[0].children;
+                            textParticles.forEach((text, i) => {
+                                text.position.y = text.userData.originalY + Math.sin(time * 2 + i) * 0.1;
+                                text.rotation.z = Math.sin(time + i * 0.5) * 0.2;
+                            });
+                        }
+                        break;
+                    
+                    case 3: // Computer Vision
+                        if (mesh.children[2]) { // Scan lines
+                            const scanLines = mesh.children[2].children;
+                            scanLines.forEach(line => {
+                                line.position.y += line.userData.speed * line.userData.direction;
+                                
+                                // Reverse direction at boundaries
+                                if (line.position.y > 1 || line.position.y < -1) {
+                                    line.userData.direction *= -1;
+                                }
+                                
+                                line.material.opacity = 0.3 + 0.3 * Math.sin(time * 3);
+                            });
+                        }
+                        
+                        // Make pupil and iris pulse
+                        if (mesh.children[0] && mesh.children[1]) {
+                            const iris = mesh.children[0];
+                            const pupil = mesh.children[1];
+                            
+                            const pulseFactor = 1 + 0.1 * Math.sin(time * 2);
+                            iris.scale.set(pulseFactor, pulseFactor, 1);
+                            pupil.scale.set(pulseFactor * 0.9, pulseFactor * 0.9, 1);
+                        }
+                        break;
+                }
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+        
+        // Add hover effect
+        card.addEventListener('mouseenter', () => {
+            if (mesh) {
+                // Speed up rotation on hover
+                mesh.userData = mesh.userData || {};
+                mesh.userData.originalRotationSpeed = 0.01;
+                mesh.userData.hoverRotationSpeed = 0.05;
+            }
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            if (mesh) {
+                // Restore original rotation speed
+                mesh.userData = mesh.userData || {};
+                mesh.userData.hoverRotationSpeed = 0.01;
+            }
+        });
+    });
+}
+
+// Add 3D visualizations to the stats in About section
+function init3DStats() {
+    const statItems = document.querySelectorAll('.stat-item');
+    
+    if (!statItems.length) return;
+    
+    statItems.forEach((statItem, index) => {
+        // Create a canvas for the 3D visualization
+        const canvas = document.createElement('canvas');
+        canvas.classList.add('stat-3d-visual');
+        canvas.width = 80;
+        canvas.height = 80;
+        canvas.style.position = 'absolute';
+        canvas.style.top = '10px';
+        canvas.style.right = '10px';
+        canvas.style.pointerEvents = 'none';
+        
+        // Add it to the stat item
+        statItem.style.position = 'relative';
+        statItem.appendChild(canvas);
+        
+        // Set up Three.js
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ 
+            canvas: canvas,
+            antialias: true,
+            alpha: true
+        });
+        
+        renderer.setSize(canvas.width, canvas.height);
+        
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        
+        const pointLight = new THREE.PointLight(0x3a86ff, 1, 100);
+        pointLight.position.set(3, 3, 3);
+        scene.add(pointLight);
+        
+        // Create different visualizations for each stat
+        let mesh;
+        
+        switch(index) {
+            // Years of Innovation
+            case 0:
+                // Create a growing tree-like structure
+                const treeGeometry = new THREE.CylinderGeometry(0.1, 0.2, 2, 8);
+                const treeMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3a86ff,
+                    emissive: 0x3a86ff,
+                    emissiveIntensity: 0.2
+                });
+                mesh = new THREE.Mesh(treeGeometry, treeMaterial);
+                
+                // Add branches
+                for (let i = 0; i < 3; i++) {
+                    const branchGeometry = new THREE.CylinderGeometry(0.05, 0.08, 1, 8);
+                    const branchMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x3a86ff,
+                        emissive: 0x3a86ff,
+                        emissiveIntensity: 0.2
+                    });
+                    const branch = new THREE.Mesh(branchGeometry, branchMaterial);
+                    
+                    branch.rotation.z = Math.PI / 4 + (i * Math.PI / 2);
+                    branch.position.y = 0.3 + (i * 0.4);
+                    
+                    mesh.add(branch);
+                }
+                
+                mesh.rotation.x = Math.PI / 2;
+                mesh.position.y = -0.5;
+                break;
+                
+            // AI Models Developed
+            case 1:
+                // Create a cluster of nodes representing models
+                mesh = new THREE.Group();
+                
+                for (let i = 0; i < 30; i++) {
+                    const modelGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                    const modelMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x8338ec,
+                        emissive: 0x8338ec,
+                        emissiveIntensity: 0.3
+                    });
+                    const model = new THREE.Mesh(modelGeometry, modelMaterial);
+                    
+                    // Position in a 3D grid
+                    model.position.set(
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2,
+                        (Math.random() - 0.5) * 2
+                    );
+                    
+                    // Store original position
+                    model.userData = {
+                        originalPos: model.position.clone(),
+                        pulseSpeed: Math.random() * 2 + 1
+                    };
+                    
+                    mesh.add(model);
+                }
+                break;
+                
+            // Client Satisfaction
+            case 2:
+                // Create a percentage chart
+                mesh = new THREE.Group();
+                
+                // Background circle
+                const bgGeometry = new THREE.RingGeometry(0.8, 1, 32);
+                const bgMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x1a1a2e,
+                    side: THREE.DoubleSide
+                });
+                const bgRing = new THREE.Mesh(bgGeometry, bgMaterial);
+                mesh.add(bgRing);
+                
+                // Progress circle (99%)
+                const progressGeometry = new THREE.RingGeometry(0.8, 1, 32, 1, 0, Math.PI * 2 * 0.99);
+                const progressMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xff006e,
+                    emissive: 0xff006e,
+                    emissiveIntensity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const progressRing = new THREE.Mesh(progressGeometry, progressMaterial);
+                mesh.add(progressRing);
+                break;
+                
+            // 24/7 Technical Support
+            case 3:
+                // Create a spinning clock
+                mesh = new THREE.Group();
+                
+                // Clock face
+                const clockGeometry = new THREE.CircleGeometry(1, 32);
+                const clockMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x1a1a2e,
+                    side: THREE.DoubleSide
+                });
+                const clockFace = new THREE.Mesh(clockGeometry, clockMaterial);
+                mesh.add(clockFace);
+                
+                // Clock hands
+                const hourHandGeometry = new THREE.PlaneGeometry(0.1, 0.5);
+                const hourHandMaterial = new THREE.MeshPhongMaterial({
+                    color: 0x3a86ff,
+                    emissive: 0x3a86ff,
+                    emissiveIntensity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const hourHand = new THREE.Mesh(hourHandGeometry, hourHandMaterial);
+                hourHand.position.y = 0.25;
+                mesh.add(hourHand);
+                
+                const minuteHandGeometry = new THREE.PlaneGeometry(0.05, 0.7);
+                const minuteHandMaterial = new THREE.MeshPhongMaterial({
+                    color: 0xff006e,
+                    emissive: 0xff006e,
+                    emissiveIntensity: 0.5,
+                    side: THREE.DoubleSide
+                });
+                const minuteHand = new THREE.Mesh(minuteHandGeometry, minuteHandMaterial);
+                minuteHand.position.y = 0.35;
+                mesh.add(minuteHand);
+                break;
+        }
+        
+        scene.add(mesh);
+        camera.position.z = 4;
+        
+        // Animation function
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            const time = Date.now() * 0.001;
+            
+            // Different animations for different stats
+            switch(index) {
+                case 0: // Years of Innovation
+                    mesh.rotation.y += 0.01;
+                    // Grow and shrink the tree
+                    mesh.scale.y = 1 + 0.1 * Math.sin(time);
+                    // Animate branches
+                    mesh.children.forEach((branch, i) => {
+                        branch.rotation.x = Math.sin(time + i) * 0.1;
+                    });
+                    break;
+                
+                case 1: // AI Models Developed
+                    mesh.rotation.y += 0.01;
+                    mesh.rotation.x += 0.005;
+                    // Pulse the models
+                    mesh.children.forEach((model, i) => {
+                        const pulseSpeed = model.userData.pulseSpeed;
+                        const scale = 1 + 0.5 * Math.sin(time * pulseSpeed);
+                        model.scale.set(scale, scale, scale);
+                    });
+                    break;
+                
+                case 2: // Client Satisfaction
+                    mesh.rotation.z += 0.01;
+                    // Pulse the progress ring
+                    if (mesh.children[1]) {
+                        mesh.children[1].material.emissiveIntensity = 0.3 + 0.3 * Math.sin(time * 2);
+                    }
+                    break;
+                
+                case 3: // 24/7 Technical Support
+                    // Rotate clock hands
+                    if (mesh.children[1]) { // Hour hand
+                        mesh.children[1].rotation.z = time * 0.1;
+                    }
+                    if (mesh.children[2]) { // Minute hand
+                        mesh.children[2].rotation.z = time * 0.5;
+                    }
+                    break;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+    });
+}
+
+// Enhance the contact section with interactive elements
+function enhanceContactSection() {
+    const contactSection = document.querySelector('#contact');
+    if (!contactSection) return;
+    
+    // Add floating particles behind the contact form
+    const contactForm = contactSection.querySelector('.contact-form');
+    if (!contactForm) return;
+    
+    // Create a background canvas
+    const formBgCanvas = document.createElement('canvas');
+    formBgCanvas.classList.add('form-bg-canvas');
+    formBgCanvas.style.position = 'absolute';
+    formBgCanvas.style.top = '0';
+    formBgCanvas.style.left = '0';
+    formBgCanvas.style.width = '100%';
+    formBgCanvas.style.height = '100%';
+    formBgCanvas.style.pointerEvents = 'none';
+    formBgCanvas.style.borderRadius = 'var(--border-radius)';
+    formBgCanvas.style.zIndex = '-1';
+    
+    // Add canvas just behind the form content
+    contactForm.style.position = 'relative';
+    contactForm.style.overflow = 'hidden';
+    contactForm.appendChild(formBgCanvas);
+    
+    // Initialize the canvas
+    const ctx = formBgCanvas.getContext('2d');
+    formBgCanvas.width = contactForm.offsetWidth;
+    formBgCanvas.height = contactForm.offsetHeight;
+    
+    // Resize handler
+    window.addEventListener('resize', () => {
+        formBgCanvas.width = contactForm.offsetWidth;
+        formBgCanvas.height = contactForm.offsetHeight;
+    });
+    
+    // Create particles
+    const particles = [];
+    const particleCount = 30;
+    
+    for (let i = 0; i < particleCount; i++) {
+        particles.push({
+            x: Math.random() * formBgCanvas.width,
+            y: Math.random() * formBgCanvas.height,
+            size: Math.random() * 3 + 1,
+            speedX: Math.random() * 0.5 - 0.25,
+            speedY: Math.random() * 0.5 - 0.25,
+            color: getFormParticleColor()
+        });
+    }
+    
+    function getFormParticleColor() {
+        // Colors matching the site theme
+        const colors = [
+            'rgba(58, 134, 255, 0.2)',
+            'rgba(131, 56, 236, 0.2)',
+            'rgba(255, 0, 110, 0.2)'
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    // Animation loop
+    function animateFormBg() {
+        requestAnimationFrame(animateFormBg);
+        ctx.clearRect(0, 0, formBgCanvas.width, formBgCanvas.height);
+        
+        // Update and draw particles
+        for (let i = 0; i < particles.length; i++) {
+            const p = particles[i];
+            
+            p.x += p.speedX;
+            p.y += p.speedY;
+            
+            // Boundary checking
+            if (p.x < 0 || p.x > formBgCanvas.width) p.speedX *= -1;
+            if (p.y < 0 || p.y > formBgCanvas.height) p.speedY *= -1;
+            
+            // Draw particle
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+            ctx.fillStyle = p.color;
+            ctx.fill();
+        }
+        
+        // Connect particles
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i; j < particles.length; j++) {
+                const p1 = particles[i];
+                const p2 = particles[j];
+                
+                const dx = p1.x - p2.x;
+                const dy = p1.y - p2.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 100) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(58, 134, 255, ${0.1 * (1 - distance / 100)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    
+    animateFormBg();
+    
+    // Add input field effects
+    const formInputs = contactForm.querySelectorAll('input, textarea, select');
+    
+    formInputs.forEach(input => {
+        // Create a ripple effect on focus
+        input.addEventListener('focus', function() {
+            this.style.boxShadow = '0 0 0 3px rgba(58, 134, 255, 0.2), 0 0 20px rgba(58, 134, 255, 0.3)';
+            this.style.transition = 'all 0.3s ease';
+        });
+        
+        input.addEventListener('blur', function() {
+            this.style.boxShadow = '';
+        });
+        
+        // Add typing effect for text inputs
+        if (input.tagName.toLowerCase() !== 'select') {
+            input.addEventListener('input', function() {
+                // Create a ripple particle at cursor position
+                const rect = this.getBoundingClientRect();
+                const formRect = contactForm.getBoundingClientRect();
+                
+                const x = this.selectionStart * 10 % formBgCanvas.width;
+                const y = rect.top - formRect.top + rect.height / 2;
+                
+                // Add a temporary particle
+                particles.push({
+                    x: x,
+                    y: y,
+                    size: Math.random() * 5 + 3,
+                    speedX: (Math.random() - 0.5) * 2,
+                    speedY: (Math.random() - 0.5) * 2,
+                    color: 'rgba(58, 134, 255, 0.5)',
+                    life: 20
+                });
+            });
+        }
+    });
+    
+    // Add submit button effect
+    const submitButton = contactForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+        submitButton.addEventListener('mouseenter', () => {
+            // Add particles around the button
+            const rect = submitButton.getBoundingClientRect();
+            const formRect = contactForm.getBoundingClientRect();
+            
+            for (let i = 0; i < 10; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 20 + 30;
+                
+                particles.push({
+                    x: rect.left - formRect.left + rect.width / 2 + Math.cos(angle) * distance,
+                    y: rect.top - formRect.top + rect.height / 2 + Math.sin(angle) * distance,
+                    size: Math.random() * 4 + 2,
+                    speedX: Math.cos(angle) * (Math.random() + 0.5) * 0.5,
+                    speedY: Math.sin(angle) * (Math.random() + 0.5) * 0.5,
+                    color: 'rgba(58, 134, 255, 0.5)',
+                    life: 30
+                });
+            }
+        });
+    }
+}
+
+// Add subtle 3D effects to footer
+function addFooterEffects() {
+    const footer = document.querySelector('.footer');
+    if (!footer) return;
+    
+    // Create a canvas for 3D wave effect
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('footer-wave-canvas');
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    
+    footer.style.position = 'relative';
+    footer.prepend(canvas);
+    
+    // Set up Three.js
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / footer.offsetHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas,
+        antialias: true,
+        alpha: true
+    });
+    
+    renderer.setSize(window.innerWidth, footer.offsetHeight);
+    
+    // Handle resizing
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / footer.offsetHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, footer.offsetHeight);
+    });
+    
+    // Create a wave mesh
+    const waveGeometry = new THREE.PlaneGeometry(30, 10, 100, 20);
+    const waveMaterial = new THREE.MeshBasicMaterial({
+        color: 0x3a86ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.2
+    });
+    
+    const wave = new THREE.Mesh(waveGeometry, waveMaterial);
+    wave.rotation.x = -Math.PI / 2;
+    wave.position.y = -2;
+    wave.position.z = -5;
+    scene.add(wave);
+    
+    // Add a subtle glow
+    const glowGeometry = new THREE.PlaneGeometry(30, 10);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+        color: 0x3a86ff,
+        transparent: true,
+        opacity: 0.05
+    });
+    
+    const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.y = -2.1;
+    glow.position.z = -5;
+    scene.add(glow);
+    
+    // Position camera
+    camera.position.y = 5;
+    camera.position.z = 5;
+    camera.lookAt(0, 0, 0);
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = Date.now() * 0.001;
+        
+        // Animate wave vertices
+        const position = waveGeometry.attributes.position;
+        
+        for (let i = 0; i < position.count; i++) {
+            const y = 0.5 * Math.sin(i / 5 + time);
+            position.setY(i, position.getY(i) + (y - position.getY(i)) * 0.05);
+        }
+        
+        position.needsUpdate = true;
+        
+        // Pulse glow
+        glow.material.opacity = 0.05 + 0.03 * Math.sin(time);
         
         renderer.render(scene, camera);
     }
