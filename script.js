@@ -3225,7 +3225,7 @@ function create3DLogo() {
     }, 300);
 }
 
-// Simulate AI thinking with dynamic text generation
+// Improved AI text generation with optimized performance
 function initAITextEffects() {
     // Find elements to apply the effect to
     const heroTitle = document.querySelector('.hero-content h1');
@@ -3233,64 +3233,49 @@ function initAITextEffects() {
     
     if (!heroTitle || !heroParagraph) return;
     
-    // Store original texts
+    // Store original texts - use textContent for paragraph to avoid HTML issues
     const originalTitle = heroTitle.innerHTML;
     const originalParagraph = heroParagraph.textContent;
     
-    // Create a wrapper for the AI typing effect
-    const createAITypingEffect = (element, originalText, delay = 0) => {
-        // Clear the element
-        element.innerHTML = '';
-        
-        // Create the cursor element
-        const cursor = document.createElement('span');
-        cursor.classList.add('ai-cursor');
-        cursor.innerHTML = '|';
-        cursor.style.cssText = `
-            display: inline-block;
-            color: var(--primary-color);
-            font-weight: bold;
-            animation: cursorBlink 1s infinite;
-            margin-left: 2px;
-            position: relative;
-            top: 2px;
+    // Add styles only once
+    if (!document.querySelector('style#ai-cursor-style')) {
+        const style = document.createElement('style');
+        style.id = 'ai-cursor-style';
+        style.textContent = `
+            @keyframes cursorBlink {
+                0%, 49% { opacity: 1; }
+                50%, 100% { opacity: 0; }
+            }
+            
+            .ai-cursor {
+                display: inline-block;
+                color: var(--primary-color);
+                font-weight: bold;
+                animation: cursorBlink 1s infinite;
+                margin-left: 2px;
+                position: relative;
+                top: 2px;
+            }
+            
+            .ai-thinking {
+                position: relative;
+                display: inline-block;
+                color: var(--primary-color);
+                margin-right: 8px;
+                font-family: monospace;
+                font-size: 0.9em;
+                opacity: 1;
+                transition: opacity 0.5s ease;
+            }
         `;
-        
-        // Add keyframe animation for cursor
-        if (!document.querySelector('style#ai-cursor-style')) {
-            const style = document.createElement('style');
-            style.id = 'ai-cursor-style';
-            style.textContent = `
-                @keyframes cursorBlink {
-                    0%, 49% { opacity: 1; }
-                    50%, 100% { opacity: 0; }
-                }
-                
-                @keyframes glitchText {
-                    0% { transform: translate(0); }
-                    20% { transform: translate(-2px, 2px); }
-                    40% { transform: translate(-2px, -2px); }
-                    60% { transform: translate(2px, 2px); }
-                    80% { transform: translate(2px, -2px); }
-                    100% { transform: translate(0); }
-                }
-                
-                .ai-thinking {
-                    position: relative;
-                    display: inline-block;
-                    color: var(--primary-color);
-                    margin-right: 8px;
-                    font-family: monospace;
-                    font-size: 0.9em;
-                }
-                
-                .ai-glitch {
-                    animation: glitchText 0.3s ease;
-                    display: inline-block;
-                }
-            `;
-            document.head.appendChild(style);
-        }
+        document.head.appendChild(style);
+    }
+    
+    // Optimized typing effect function
+    const createAITypingEffect = (element, text, delay = 0) => {
+        // Clear element content
+        const originalHTML = element.innerHTML;
+        element.innerHTML = '';
         
         // Add AI thinking indicator
         const aiThinking = document.createElement('span');
@@ -3298,106 +3283,99 @@ function initAITextEffects() {
         aiThinking.textContent = '[AI]';
         element.appendChild(aiThinking);
         
-        // Start typing effect after delay
+        // Create cursor
+        const cursor = document.createElement('span');
+        cursor.classList.add('ai-cursor');
+        cursor.textContent = '|';
+        element.appendChild(cursor);
+        
+        // Handle HTML for title element, but use text for paragraph
+        let processText = text;
+        let isTitle = element === heroTitle;
+        
+        // If we're dealing with the HTML in title that has spans or other elements
+        if (isTitle) {
+            // Create a temporary element to handle HTML
+            const temp = document.createElement('div');
+            temp.innerHTML = text;
+            
+            // Extract text and HTML structure
+            processText = temp.innerHTML;
+        }
+        
+        // Start typing after delay
         setTimeout(() => {
-            let processedText = '';
+            let displayText = '';
+            let currentIndex = 0;
             
-            // For title, preserve HTML tags like spans
-            if (element === heroTitle) {
-                // Parse the HTML to separate tags from text
-                const tempDiv = document.createElement('div');
-                tempDiv.innerHTML = originalText;
-                processedText = tempDiv.innerHTML;
-            } else {
-                processedText = originalText;
-            }
-            
-            // Start typing effect
-            let i = 0;
-            let isTag = false;
-            let textBuffer = '';
-            
-            function typeNextChar() {
-                if (i < processedText.length) {
-                    // Handle HTML tags (don't animate them)
-                    if (processedText[i] === '<') {
-                        isTag = true;
-                    }
-                    
-                    if (isTag) {
-                        textBuffer += processedText[i];
-                        if (processedText[i] === '>') {
-                            isTag = false;
-                            element.innerHTML = element.innerHTML.replace(cursor.outerHTML, '') + textBuffer + cursor.outerHTML;
-                            textBuffer = '';
-                        }
-                    } else {
-                        // Normal text character typing
-                        let nextChar = processedText[i];
-                        element.innerHTML = element.innerHTML.replace(cursor.outerHTML, '') + nextChar + cursor.outerHTML;
-                        
-                        // Occasionally add "thinking" delay or glitch effect
-                        if (Math.random() > 0.92) {
-                            // Add glitch effect to last character
-                            const currentText = element.innerHTML;
-                            const lastCharIndex = currentText.lastIndexOf(nextChar);
-                            if (lastCharIndex >= 0) {
-                                // Apply glitch class to last character
-                                const glitchedText = 
-                                    currentText.substring(0, lastCharIndex) + 
-                                    `<span class="ai-glitch">${nextChar}</span>` +
-                                    currentText.substring(lastCharIndex + 1);
-                                element.innerHTML = glitchedText;
-                            }
+            // Function to type the next character
+            function typeNext() {
+                if (currentIndex < processText.length) {
+                    // For titles, we handle HTML tags specially
+                    if (isTitle && processText[currentIndex] === '<') {
+                        // Find the end of this tag
+                        const endIndex = processText.indexOf('>', currentIndex);
+                        if (endIndex !== -1) {
+                            // Add the whole tag at once
+                            displayText += processText.substring(currentIndex, endIndex + 1);
+                            currentIndex = endIndex + 1;
                             
-                            // Longer delay to simulate "thinking"
-                            setTimeout(typeNextChar, Math.random() * 400 + 100);
-                            i++;
+                            // Update the display immediately and continue
+                            element.innerHTML = displayText;
+                            element.appendChild(cursor);
+                            
+                            // Schedule next character with minimal delay
+                            setTimeout(typeNext, 10);
                             return;
                         }
                     }
                     
-                    i++;
-                    // Randomize typing speed slightly
-                    setTimeout(typeNextChar, Math.random() * 40 + 20);
+                    // Add next character
+                    displayText += processText[currentIndex];
+                    currentIndex++;
+                    
+                    // Update display
+                    if (isTitle) {
+                        // For HTML content
+                        element.innerHTML = displayText;
+                        element.appendChild(cursor);
+                    } else {
+                        // For plain text
+                        aiThinking.insertAdjacentText('afterend', processText[currentIndex - 1]);
+                    }
+                    
+                    // Randomize typing speed, but keep it fast enough to avoid lag
+                    const nextDelay = Math.random() * 30 + 20;
+                    setTimeout(typeNext, nextDelay);
                 } else {
-                    // Typing complete
+                    // Typing complete - fade out the AI indicator
+                    aiThinking.style.opacity = '0';
                     setTimeout(() => {
-                        // Remove AI thinking indicator
-                        const aiIndicator = element.querySelector('.ai-thinking');
-                        if (aiIndicator) {
-                            aiIndicator.style.opacity = '0';
-                            setTimeout(() => {
-                                if (aiIndicator.parentNode) {
-                                    aiIndicator.parentNode.removeChild(aiIndicator);
-                                }
-                            }, 500);
+                        if (aiThinking.parentNode) {
+                            aiThinking.parentNode.removeChild(aiThinking);
                         }
-                        
-                        // Remove cursor
-                        const cursorElement = element.querySelector('.ai-cursor');
-                        if (cursorElement) {
-                            cursorElement.parentNode.removeChild(cursorElement);
+                    }, 500);
+                    
+                    // Keep cursor visible for a moment, then remove it
+                    setTimeout(() => {
+                        if (cursor.parentNode) {
+                            cursor.parentNode.removeChild(cursor);
                         }
                     }, 1000);
                 }
             }
             
-            typeNextChar();
+            // Start typing
+            typeNext();
         }, delay);
     };
     
-    // Apply the AI typing effect with sequential timing
+    // Apply effects with sequential timing
     createAITypingEffect(heroTitle, originalTitle, 500);
     createAITypingEffect(heroParagraph, originalParagraph, 2500);
     
-    // Add responsive AI text generation to section headers when they come into view
+    // Apply to section headers when they come into view
     const sectionHeaders = document.querySelectorAll('.section-header h2');
-    
-    const observerOptions = {
-        threshold: 0.5,
-        rootMargin: '0px'
-    };
     
     const sectionObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
@@ -3405,14 +3383,17 @@ function initAITextEffects() {
                 const header = entry.target;
                 const originalText = header.innerHTML;
                 
-                // Apply AI typing effect when section comes into view
+                // Apply AI typing effect
                 createAITypingEffect(header, originalText);
                 
-                // Unobserve after triggering the effect
+                // Unobserve after triggering
                 sectionObserver.unobserve(header);
             }
         });
-    }, observerOptions);
+    }, {
+        threshold: 0.5,
+        rootMargin: '0px'
+    });
     
     // Observe all section headers
     sectionHeaders.forEach(header => {
@@ -3420,7 +3401,7 @@ function initAITextEffects() {
     });
 }
 
-// Add futuristic voice-based interactions
+// Improved voice interactions with clearer command instructions
 function initVoiceInteractions() {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
         console.log('Speech recognition not supported in this browser');
@@ -3486,7 +3467,7 @@ function initVoiceInteractions() {
             position: fixed;
             bottom: 100px;
             right: 30px;
-            background: rgba(26, 26, 46, 0.8);
+            background: rgba(26, 26, 46, 0.9);
             color: white;
             padding: 15px 20px;
             border-radius: 10px;
@@ -3502,6 +3483,18 @@ function initVoiceInteractions() {
         .voice-feedback.active {
             opacity: 1;
             transform: translateY(0);
+        }
+        
+        .voice-commands {
+            margin-top: 10px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+            line-height: 1.4;
+        }
+        
+        .voice-commands span {
+            color: var(--primary-color);
+            font-weight: bold;
         }
         
         .voice-visualizer {
@@ -3531,10 +3524,22 @@ function initVoiceInteractions() {
     
     document.head.appendChild(rippleStyle);
     
-    // Create feedback element
+    // Create improved feedback element with command list
     const feedback = document.createElement('div');
     feedback.classList.add('voice-feedback');
-    feedback.textContent = 'Say "scroll down", "services", or "contact" to navigate';
+    feedback.innerHTML = `
+        <div>AI Voice Assistant</div>
+        <div class="voice-commands">
+            Available commands:
+            <br>• <span>"home"</span> - go to top
+            <br>• <span>"about"</span> - about section
+            <br>• <span>"services"</span> - services section
+            <br>• <span>"tech"</span> - technologies section
+            <br>• <span>"contact"</span> - contact section
+            <br>• <span>"scroll down"</span> - scroll down
+            <br>• <span>"scroll up"</span> - scroll up
+        </div>
+    `;
     document.body.appendChild(feedback);
     
     // Add voice visualizer to feedback
@@ -3550,6 +3555,9 @@ function initVoiceInteractions() {
     }
     
     feedback.appendChild(visualizer);
+    
+    // Hide visualizer initially
+    visualizer.style.display = 'none';
     
     // Initialize speech recognition
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3576,8 +3584,15 @@ function initVoiceInteractions() {
             voiceButton.style.backgroundColor = 'var(--accent-color)';
             ripple.classList.add('active');
             feedback.classList.add('active');
-            feedback.textContent = 'Listening...';
+            
+            // Update feedback and show visualizer
+            const commandsList = feedback.querySelector('.voice-commands');
+            if (commandsList) commandsList.style.display = 'none';
+            
+            feedback.firstElementChild.textContent = 'Listening...';
+            visualizer.style.display = 'flex';
         } catch (e) {
+            feedback.textContent = 'Listening...';
             console.error('Speech recognition error:', e);
         }
     }
