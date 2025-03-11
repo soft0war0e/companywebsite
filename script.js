@@ -63,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add floating 3D logo
     create3DLogo();
+    
+    // Create neural environment background
+    createNeuralEnvironment();
 });
 
 // Navigation menu toggle
@@ -3211,4 +3214,373 @@ function create3DLogo() {
             }, duration + 100);
         }
     }, 300);
+}
+
+// Add this function to create an immersive 3D neural environment background
+function createNeuralEnvironment() {
+    // Create a canvas that spans the entire viewport
+    const canvas = document.createElement('canvas');
+    canvas.id = 'neural-environment';
+    canvas.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: -10;
+        pointer-events: none;
+    `;
+    document.body.prepend(canvas);
+    
+    // Initialize Three.js scene
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas,
+        antialias: true,
+        alpha: true
+    });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    // Create neural network objects
+    const nodesCount = 200;
+    const nodes = [];
+    const nodeGroups = [];
+    const connectionLines = [];
+    
+    // Create three distinct node groups representing different neural layers
+    for (let g = 0; g < 3; g++) {
+        const group = new THREE.Group();
+        group.position.z = -25 - (g * 15);
+        scene.add(group);
+        nodeGroups.push(group);
+        
+        // Add nodes to each group
+        const layerNodes = [];
+        const count = nodesCount - (g * 30); // Fewer nodes in deeper layers
+        
+        for (let i = 0; i < count; i++) {
+            // Create spherical node
+            const geometry = new THREE.SphereGeometry(0.15, 8, 8);
+            const material = new THREE.MeshBasicMaterial({
+                color: new THREE.Color().setHSL(0.6, 0.8, 0.5),
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const node = new THREE.Mesh(geometry, material);
+            
+            // Position in a bounded volume
+            node.position.x = (Math.random() - 0.5) * 40;
+            node.position.y = (Math.random() - 0.5) * 40;
+            node.position.z = (Math.random() - 0.5) * 10;
+            
+            // Store animation properties
+            node.userData = {
+                originalPosition: node.position.clone(),
+                pulseSpeed: Math.random() * 2 + 1,
+                moveSpeed: Math.random() * 0.01 + 0.005,
+                connections: []
+            };
+            
+            group.add(node);
+            layerNodes.push(node);
+        }
+        
+        nodes.push(layerNodes);
+    }
+    
+    // Create connections between nodes in adjacent layers
+    const lineMaterial = new THREE.LineBasicMaterial({
+        color: 0x3a86ff,
+        transparent: true,
+        opacity: 0.2
+    });
+    
+    // Connect nodes between layers
+    for (let l = 0; l < nodes.length - 1; l++) {
+        const currentLayer = nodes[l];
+        const nextLayer = nodes[l + 1];
+        
+        // Each node connects to several nodes in the next layer
+        currentLayer.forEach(sourceNode => {
+            // Connect to a random subset of nodes in the next layer
+            const connectionCount = Math.floor(Math.random() * 3) + 1;
+            
+            for (let c = 0; c < connectionCount; c++) {
+                const targetIndex = Math.floor(Math.random() * nextLayer.length);
+                const targetNode = nextLayer[targetIndex];
+                
+                // Create connection geometry
+                const points = [
+                    sourceNode.position.clone(),
+                    targetNode.position.clone()
+                ];
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, lineMaterial);
+                
+                // Store reference to connected nodes
+                line.userData = {
+                    source: sourceNode,
+                    target: targetNode,
+                    originalOpacity: 0.1 + Math.random() * 0.1,
+                    pulseSpeed: Math.random() * 2 + 1
+                };
+                
+                // Add connection to the source node's layer group
+                nodeGroups[l].add(line);
+                connectionLines.push(line);
+                
+                // Store connection in node data
+                sourceNode.userData.connections.push({
+                    line: line,
+                    target: targetNode
+                });
+            }
+        });
+    }
+    
+    // Create data pulse particles that travel along connections
+    const pulses = [];
+    const pulseCount = 30;
+    const pulseGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const pulseMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff006e,
+        transparent: true,
+        opacity: 0.8
+    });
+    
+    for (let i = 0; i < pulseCount; i++) {
+        const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
+        pulse.visible = false;
+        
+        pulse.userData = {
+            isActive: false,
+            progress: 0,
+            speed: Math.random() * 0.02 + 0.01,
+            connection: null
+        };
+        
+        scene.add(pulse);
+        pulses.push(pulse);
+    }
+    
+    // Mouse movement tracking for interactivity
+    const mouse = new THREE.Vector2();
+    let mouseInScene = false;
+    
+    document.addEventListener('mousemove', (event) => {
+        // Convert mouse position to normalized device coordinates (-1 to +1)
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        mouseInScene = true;
+        
+        // Activate nodes near mouse position
+        activateNodesNearMouse();
+    });
+    
+    document.addEventListener('mouseout', () => {
+        mouseInScene = false;
+    });
+    
+    // Function to activate nodes near the mouse cursor
+    function activateNodesNearMouse() {
+        if (!mouseInScene) return;
+        
+        // Project mouse position into scene
+        const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+        vector.unproject(camera);
+        
+        const dir = vector.sub(camera.position).normalize();
+        const distance = -camera.position.z / dir.z;
+        const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+        
+        // Check all nodes for activation
+        nodeGroups.forEach((group, layerIndex) => {
+            // Transform mouse world position to account for group position
+            const localMousePos = pos.clone();
+            localMousePos.z += group.position.z;
+            
+            nodes[layerIndex].forEach(node => {
+                const nodeWorldPos = node.position.clone();
+                
+                // Calculate distance to mouse in XY plane (ignore Z)
+                const dist = Math.sqrt(
+                    Math.pow(nodeWorldPos.x - localMousePos.x, 2) + 
+                    Math.pow(nodeWorldPos.y - localMousePos.y, 2)
+                );
+                
+                // Activate nodes within distance threshold
+                if (dist < 10) {
+                    // Scale inverse with distance (closer = stronger effect)
+                    const intensity = 1 - (dist / 10);
+                    
+                    // Increase size and glow
+                    node.scale.set(1 + intensity, 1 + intensity, 1 + intensity);
+                    node.material.opacity = Math.min(0.9, 0.5 + intensity * 0.5);
+                    node.material.color.setHSL(0.6, 0.8, 0.5 + intensity * 0.5);
+                    
+                    // Activate connections from this node
+                    node.userData.connections.forEach(conn => {
+                        const line = conn.line;
+                        
+                        // Brighten line
+                        line.material.opacity = Math.min(0.8, line.userData.originalOpacity + intensity * 0.7);
+                        
+                        // Trigger a data pulse with some probability
+                        if (Math.random() < 0.1) {
+                            // Find an available pulse
+                            const availablePulse = pulses.find(p => !p.userData.isActive);
+                            if (availablePulse) {
+                                initiatePulse(availablePulse, line);
+                            }
+                        }
+                    });
+                } else {
+                    // Return to normal state gradually
+                    node.scale.x = Math.max(1, node.scale.x * 0.95);
+                    node.scale.y = Math.max(1, node.scale.y * 0.95);
+                    node.scale.z = Math.max(1, node.scale.z * 0.95);
+                    node.material.opacity = Math.max(0.5, node.material.opacity * 0.98);
+                    
+                    // Reset color gradually
+                    const currentL = node.material.color.getHSL({}).l;
+                    if (currentL > 0.5) {
+                        node.material.color.setHSL(0.6, 0.8, Math.max(0.5, currentL * 0.98));
+                    }
+                }
+            });
+        });
+    }
+    
+    // Function to initiate a data pulse on a connection
+    function initiatePulse(pulse, connection) {
+        pulse.userData.isActive = true;
+        pulse.userData.connection = connection;
+        pulse.userData.progress = 0;
+        pulse.visible = true;
+    }
+    
+    // Position camera
+    camera.position.z = 30;
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = Date.now() * 0.001;
+        
+        // Subtle movement of the entire neural network
+        nodeGroups.forEach((group, index) => {
+            group.rotation.y = Math.sin(time * 0.1) * 0.05;
+            group.rotation.x = Math.cos(time * 0.1) * 0.03;
+        });
+        
+        // Animate nodes
+        nodeGroups.forEach((group, layerIndex) => {
+            nodes[layerIndex].forEach(node => {
+                // Subtle floating motion
+                const originalPos = node.userData.originalPosition;
+                node.position.y = originalPos.y + Math.sin(time * node.userData.pulseSpeed) * 0.2;
+                
+                // Subtle pulsing opacity for background animation
+                if (node.scale.x <= 1.05) {  // Only apply to nodes not activated by mouse
+                    node.material.opacity = 0.3 + 0.2 * Math.sin(time * node.userData.pulseSpeed);
+                }
+            });
+        });
+        
+        // Animate connection lines
+        connectionLines.forEach(line => {
+            // Update line vertices to match connected nodes
+            const positions = line.geometry.attributes.position.array;
+            
+            const sourcePos = line.userData.source.position;
+            positions[0] = sourcePos.x;
+            positions[1] = sourcePos.y;
+            positions[2] = sourcePos.z;
+            
+            const targetPos = line.userData.target.position;
+            positions[3] = targetPos.x;
+            positions[4] = targetPos.y;
+            positions[5] = targetPos.z;
+            
+            line.geometry.attributes.position.needsUpdate = true;
+            
+            // Subtle pulsing for non-activated lines
+            if (line.material.opacity <= line.userData.originalOpacity + 0.05) {
+                line.material.opacity = line.userData.originalOpacity + 0.05 * Math.sin(time * line.userData.pulseSpeed);
+            } else {
+                // Fade back to normal after activation
+                line.material.opacity = Math.max(
+                    line.userData.originalOpacity,
+                    line.material.opacity * 0.98
+                );
+            }
+        });
+        
+        // Animate data pulses
+        pulses.forEach(pulse => {
+            if (!pulse.userData.isActive) return;
+            
+            const connection = pulse.userData.connection;
+            pulse.userData.progress += pulse.userData.speed;
+            
+            if (pulse.userData.progress >= 1) {
+                // Deactivate pulse when it reaches the end
+                pulse.userData.isActive = false;
+                pulse.visible = false;
+            } else {
+                // Update position along the connection line
+                const sourcePos = connection.userData.source.position.clone();
+                sourcePos.add(connection.userData.source.parent.position);
+                
+                const targetPos = connection.userData.target.position.clone();
+                targetPos.add(connection.userData.target.parent.position);
+                
+                // Interpolate position
+                pulse.position.lerpVectors(sourcePos, targetPos, pulse.userData.progress);
+            }
+        });
+        
+        // Random activation of nodes and connections for background activity
+        if (Math.random() < 0.05) {
+            // Select a random layer and node
+            const layerIndex = Math.floor(Math.random() * nodes.length);
+            const nodeIndex = Math.floor(Math.random() * nodes[layerIndex].length);
+            const node = nodes[layerIndex][nodeIndex];
+            
+            // Activate node
+            node.scale.set(1.5, 1.5, 1.5);
+            node.material.opacity = 0.9;
+            node.material.color.setHSL(0.6, 0.8, 0.8);
+            
+            // Activate connections
+            node.userData.connections.forEach(conn => {
+                conn.line.material.opacity = 0.8;
+                
+                // Trigger data pulse
+                if (Math.random() < 0.5) {
+                    const availablePulse = pulses.find(p => !p.userData.isActive);
+                    if (availablePulse) {
+                        initiatePulse(availablePulse, conn.line);
+                    }
+                }
+            });
+        }
+        
+        renderer.render(scene, camera);
+    }
+    
+    animate();
 }
