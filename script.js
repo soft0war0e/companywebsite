@@ -63,6 +63,18 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add floating 3D logo
     create3DLogo();
+    
+    // Initialize AI text effects
+    initAITextEffects();
+    
+    // Initialize voice interactions
+    initVoiceInteractions();
+    
+    // Add more interactive elements with a slight delay
+    setTimeout(() => {
+        // Add augmented reality overlay effect
+        addAugmentedRealityEffect();
+    }, 1000);
 });
 
 // Navigation menu toggle
@@ -3211,4 +3223,603 @@ function create3DLogo() {
             }, duration + 100);
         }
     }, 300);
+}
+
+// Simulate AI thinking with dynamic text generation
+function initAITextEffects() {
+    // Find elements to apply the effect to
+    const heroTitle = document.querySelector('.hero-content h1');
+    const heroParagraph = document.querySelector('.hero-content p');
+    
+    if (!heroTitle || !heroParagraph) return;
+    
+    // Store original texts
+    const originalTitle = heroTitle.innerHTML;
+    const originalParagraph = heroParagraph.textContent;
+    
+    // Create a wrapper for the AI typing effect
+    const createAITypingEffect = (element, originalText, delay = 0) => {
+        // Clear the element
+        element.innerHTML = '';
+        
+        // Create the cursor element
+        const cursor = document.createElement('span');
+        cursor.classList.add('ai-cursor');
+        cursor.innerHTML = '|';
+        cursor.style.cssText = `
+            display: inline-block;
+            color: var(--primary-color);
+            font-weight: bold;
+            animation: cursorBlink 1s infinite;
+            margin-left: 2px;
+            position: relative;
+            top: 2px;
+        `;
+        
+        // Add keyframe animation for cursor
+        if (!document.querySelector('style#ai-cursor-style')) {
+            const style = document.createElement('style');
+            style.id = 'ai-cursor-style';
+            style.textContent = `
+                @keyframes cursorBlink {
+                    0%, 49% { opacity: 1; }
+                    50%, 100% { opacity: 0; }
+                }
+                
+                @keyframes glitchText {
+                    0% { transform: translate(0); }
+                    20% { transform: translate(-2px, 2px); }
+                    40% { transform: translate(-2px, -2px); }
+                    60% { transform: translate(2px, 2px); }
+                    80% { transform: translate(2px, -2px); }
+                    100% { transform: translate(0); }
+                }
+                
+                .ai-thinking {
+                    position: relative;
+                    display: inline-block;
+                    color: var(--primary-color);
+                    margin-right: 8px;
+                    font-family: monospace;
+                    font-size: 0.9em;
+                }
+                
+                .ai-glitch {
+                    animation: glitchText 0.3s ease;
+                    display: inline-block;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        // Add AI thinking indicator
+        const aiThinking = document.createElement('span');
+        aiThinking.classList.add('ai-thinking');
+        aiThinking.textContent = '[AI]';
+        element.appendChild(aiThinking);
+        
+        // Start typing effect after delay
+        setTimeout(() => {
+            let processedText = '';
+            
+            // For title, preserve HTML tags like spans
+            if (element === heroTitle) {
+                // Parse the HTML to separate tags from text
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = originalText;
+                processedText = tempDiv.innerHTML;
+            } else {
+                processedText = originalText;
+            }
+            
+            // Start typing effect
+            let i = 0;
+            let isTag = false;
+            let textBuffer = '';
+            
+            function typeNextChar() {
+                if (i < processedText.length) {
+                    // Handle HTML tags (don't animate them)
+                    if (processedText[i] === '<') {
+                        isTag = true;
+                    }
+                    
+                    if (isTag) {
+                        textBuffer += processedText[i];
+                        if (processedText[i] === '>') {
+                            isTag = false;
+                            element.innerHTML = element.innerHTML.replace(cursor.outerHTML, '') + textBuffer + cursor.outerHTML;
+                            textBuffer = '';
+                        }
+                    } else {
+                        // Normal text character typing
+                        let nextChar = processedText[i];
+                        element.innerHTML = element.innerHTML.replace(cursor.outerHTML, '') + nextChar + cursor.outerHTML;
+                        
+                        // Occasionally add "thinking" delay or glitch effect
+                        if (Math.random() > 0.92) {
+                            // Add glitch effect to last character
+                            const currentText = element.innerHTML;
+                            const lastCharIndex = currentText.lastIndexOf(nextChar);
+                            if (lastCharIndex >= 0) {
+                                // Apply glitch class to last character
+                                const glitchedText = 
+                                    currentText.substring(0, lastCharIndex) + 
+                                    `<span class="ai-glitch">${nextChar}</span>` +
+                                    currentText.substring(lastCharIndex + 1);
+                                element.innerHTML = glitchedText;
+                            }
+                            
+                            // Longer delay to simulate "thinking"
+                            setTimeout(typeNextChar, Math.random() * 400 + 100);
+                            i++;
+                            return;
+                        }
+                    }
+                    
+                    i++;
+                    // Randomize typing speed slightly
+                    setTimeout(typeNextChar, Math.random() * 40 + 20);
+                } else {
+                    // Typing complete
+                    setTimeout(() => {
+                        // Remove AI thinking indicator
+                        const aiIndicator = element.querySelector('.ai-thinking');
+                        if (aiIndicator) {
+                            aiIndicator.style.opacity = '0';
+                            setTimeout(() => {
+                                if (aiIndicator.parentNode) {
+                                    aiIndicator.parentNode.removeChild(aiIndicator);
+                                }
+                            }, 500);
+                        }
+                        
+                        // Remove cursor
+                        const cursorElement = element.querySelector('.ai-cursor');
+                        if (cursorElement) {
+                            cursorElement.parentNode.removeChild(cursorElement);
+                        }
+                    }, 1000);
+                }
+            }
+            
+            typeNextChar();
+        }, delay);
+    };
+    
+    // Apply the AI typing effect with sequential timing
+    createAITypingEffect(heroTitle, originalTitle, 500);
+    createAITypingEffect(heroParagraph, originalParagraph, 2500);
+    
+    // Add responsive AI text generation to section headers when they come into view
+    const sectionHeaders = document.querySelectorAll('.section-header h2');
+    
+    const observerOptions = {
+        threshold: 0.5,
+        rootMargin: '0px'
+    };
+    
+    const sectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                const header = entry.target;
+                const originalText = header.innerHTML;
+                
+                // Apply AI typing effect when section comes into view
+                createAITypingEffect(header, originalText);
+                
+                // Unobserve after triggering the effect
+                sectionObserver.unobserve(header);
+            }
+        });
+    }, observerOptions);
+    
+    // Observe all section headers
+    sectionHeaders.forEach(header => {
+        sectionObserver.observe(header);
+    });
+}
+
+// Add futuristic voice-based interactions
+function initVoiceInteractions() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+        console.log('Speech recognition not supported in this browser');
+        return;
+    }
+    
+    // Create voice control button
+    const voiceButton = document.createElement('button');
+    voiceButton.classList.add('voice-control');
+    voiceButton.innerHTML = '<i class="fas fa-microphone"></i>';
+    voiceButton.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        background: var(--gradient-primary);
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 9999;
+        box-shadow: 0 5px 15px rgba(58, 134, 255, 0.4);
+        transition: all 0.3s ease;
+    `;
+    
+    document.body.appendChild(voiceButton);
+    
+    // Add ripple effect to voice button
+    const ripple = document.createElement('span');
+    ripple.classList.add('voice-ripple');
+    ripple.style.cssText = `
+        position: absolute;
+        top: -20px;
+        left: -20px;
+        right: -20px;
+        bottom: -20px;
+        border-radius: 50%;
+        border: 2px solid var(--primary-color);
+        opacity: 0;
+        pointer-events: none;
+    `;
+    
+    voiceButton.appendChild(ripple);
+    
+    // Add ripple animation
+    const rippleStyle = document.createElement('style');
+    rippleStyle.textContent = `
+        @keyframes voiceRipple {
+            0% { transform: scale(0.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        
+        .voice-ripple.active {
+            animation: voiceRipple 1s infinite;
+        }
+        
+        .voice-feedback {
+            position: fixed;
+            bottom: 100px;
+            right: 30px;
+            background: rgba(26, 26, 46, 0.8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            max-width: 300px;
+            backdrop-filter: blur(10px);
+            font-size: 0.9rem;
+            z-index: 9998;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease;
+        }
+        
+        .voice-feedback.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .voice-visualizer {
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 3px;
+            display: flex;
+            justify-content: center;
+            gap: 2px;
+        }
+        
+        .voice-visualizer-bar {
+            width: 3px;
+            height: 100%;
+            background-color: var(--primary-color);
+            animation: visualizerPulse 0.5s infinite alternate;
+        }
+        
+        @keyframes visualizerPulse {
+            0% { height: 3px; }
+            100% { height: 20px; }
+        }
+    `;
+    
+    document.head.appendChild(rippleStyle);
+    
+    // Create feedback element
+    const feedback = document.createElement('div');
+    feedback.classList.add('voice-feedback');
+    feedback.textContent = 'Say "scroll down", "services", or "contact" to navigate';
+    document.body.appendChild(feedback);
+    
+    // Add voice visualizer to feedback
+    const visualizer = document.createElement('div');
+    visualizer.classList.add('voice-visualizer');
+    
+    // Add visualizer bars
+    for (let i = 0; i < 5; i++) {
+        const bar = document.createElement('div');
+        bar.classList.add('voice-visualizer-bar');
+        bar.style.animationDelay = `${i * 0.1}s`;
+        visualizer.appendChild(bar);
+    }
+    
+    feedback.appendChild(visualizer);
+    
+    // Initialize speech recognition
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    let isListening = false;
+    
+    // Voice button click handler
+    voiceButton.addEventListener('click', () => {
+        if (!isListening) {
+            startListening();
+        } else {
+            stopListening();
+        }
+    });
+    
+    function startListening() {
+        try {
+            recognition.start();
+            isListening = true;
+            voiceButton.classList.add('active');
+            voiceButton.style.backgroundColor = 'var(--accent-color)';
+            ripple.classList.add('active');
+            feedback.classList.add('active');
+            feedback.textContent = 'Listening...';
+        } catch (e) {
+            console.error('Speech recognition error:', e);
+        }
+    }
+    
+    function stopListening() {
+        recognition.stop();
+        isListening = false;
+        voiceButton.classList.remove('active');
+        voiceButton.style.backgroundColor = '';
+        ripple.classList.remove('active');
+        
+        setTimeout(() => {
+            feedback.classList.remove('active');
+        }, 2000);
+    }
+    
+    // Process voice commands
+    recognition.onresult = (event) => {
+        const command = event.results[0][0].transcript.toLowerCase();
+        feedback.textContent = `Command: "${command}"`;
+        
+        // Simple navigation commands
+        if (command.includes('scroll down')) {
+            window.scrollBy({
+                top: window.innerHeight,
+                behavior: 'smooth'
+            });
+        } else if (command.includes('scroll up')) {
+            window.scrollBy({
+                top: -window.innerHeight,
+                behavior: 'smooth'
+            });
+        } else if (command.includes('top') || command.includes('home')) {
+            document.getElementById('home').scrollIntoView({ behavior: 'smooth' });
+        } else if (command.includes('about')) {
+            document.getElementById('about').scrollIntoView({ behavior: 'smooth' });
+        } else if (command.includes('service')) {
+            document.getElementById('services').scrollIntoView({ behavior: 'smooth' });
+        } else if (command.includes('tech')) {
+            document.getElementById('technologies').scrollIntoView({ behavior: 'smooth' });
+        } else if (command.includes('contact')) {
+            document.getElementById('contact').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        // Show feedback for a moment then stop listening
+        setTimeout(() => {
+            stopListening();
+        }, 2000);
+    };
+    
+    recognition.onend = () => {
+        isListening = false;
+        voiceButton.classList.remove('active');
+        voiceButton.style.backgroundColor = '';
+        ripple.classList.remove('active');
+    };
+    
+    recognition.onerror = (event) => {
+        console.error('Speech recognition error', event.error);
+        feedback.textContent = `Error: ${event.error}`;
+        stopListening();
+    };
+    
+    // Show initial feedback briefly
+    feedback.classList.add('active');
+    setTimeout(() => {
+        feedback.classList.remove('active');
+    }, 4000);
+}
+
+// Add futuristic augmented reality overlay effect
+function addAugmentedRealityEffect() {
+    // Create AR overlay container
+    const arOverlay = document.createElement('div');
+    arOverlay.classList.add('ar-overlay');
+    arOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9990;
+    `;
+    
+    document.body.appendChild(arOverlay);
+    
+    // Add tracking elements that follow cursor or scroll position
+    const trackingElement = document.createElement('div');
+    trackingElement.classList.add('ar-tracking');
+    trackingElement.style.cssText = `
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        border: 1px solid rgba(58, 134, 255, 0.5);
+        border-radius: 50%;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+    `;
+    
+    arOverlay.appendChild(trackingElement);
+    
+    // Add tracking corner elements
+    const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    corners.forEach(position => {
+        const corner = document.createElement('div');
+        corner.classList.add(`ar-corner-${position}`);
+        
+        // Determine position
+        const isTop = position.includes('top');
+        const isLeft = position.includes('left');
+        
+        corner.style.cssText = `
+            position: absolute;
+            ${isTop ? 'top' : 'bottom'}: 0;
+            ${isLeft ? 'left' : 'right'}: 0;
+            width: 20px;
+            height: 20px;
+            border-${isTop ? 'top' : 'bottom'}: 2px solid rgba(58, 134, 255, 0.8);
+            border-${isLeft ? 'left' : 'right'}: 2px solid rgba(58, 134, 255, 0.8);
+            opacity: 0.7;
+        `;
+        
+        trackingElement.appendChild(corner);
+    });
+    
+    // Add data labels
+    const dataLabel = document.createElement('div');
+    dataLabel.classList.add('ar-data-label');
+    dataLabel.style.cssText = `
+        position: absolute;
+        top: -30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(26, 26, 46, 0.7);
+        color: var(--primary-color);
+        padding: 3px 8px;
+        border-radius: 3px;
+        font-size: 10px;
+        white-space: nowrap;
+    `;
+    
+    trackingElement.appendChild(dataLabel);
+    
+    // Track mouse movement
+    document.addEventListener('mousemove', (e) => {
+        // Position tracking element at cursor location
+        trackingElement.style.left = `${e.clientX - 75}px`;
+        trackingElement.style.top = `${e.clientY - 75}px`;
+        trackingElement.style.opacity = '1';
+        
+        // Get element under cursor (excluding our overlays)
+        const elementsUnderCursor = document.elementsFromPoint(e.clientX, e.clientY);
+        const targetElement = elementsUnderCursor.find(el => 
+            !el.closest('.ar-overlay') && 
+            !el.closest('.voice-control') && 
+            !el.closest('.voice-feedback'));
+        
+        if (targetElement) {
+            // Extract data about the element
+            const tagName = targetElement.tagName.toLowerCase();
+            const classes = targetElement.classList.value;
+            const elementType = classes || tagName;
+            
+            // Update data label
+            dataLabel.textContent = `[${elementType}]`;
+            dataLabel.style.opacity = '1';
+        } else {
+            dataLabel.style.opacity = '0';
+        }
+    });
+    
+    // Hide tracking when mouse leaves the document
+    document.addEventListener('mouseleave', () => {
+        trackingElement.style.opacity = '0';
+    });
+    
+    // Add random scanning lines that appear occasionally
+    setInterval(() => {
+        if (Math.random() > 0.7) {
+            createScanningLine();
+        }
+    }, 3000);
+    
+    function createScanningLine() {
+        const scanLine = document.createElement('div');
+        scanLine.classList.add('ar-scan-line');
+        
+        // Randomize direction (horizontal or vertical)
+        const isHorizontal = Math.random() > 0.5;
+        
+        scanLine.style.cssText = `
+            position: absolute;
+            ${isHorizontal ? 'width: 100%; height: 2px; left: 0;' : 'height: 100%; width: 2px; top: 0;'}
+            background: linear-gradient(${isHorizontal ? 'to right' : 'to bottom'}, 
+                rgba(58, 134, 255, 0), 
+                rgba(58, 134, 255, 0.8), 
+                rgba(58, 134, 255, 0));
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        `;
+        
+        arOverlay.appendChild(scanLine);
+        
+        // Position at random coordinate
+        const position = Math.random() * 100;
+        if (isHorizontal) {
+            scanLine.style.top = `${position}%`;
+        } else {
+            scanLine.style.left = `${position}%`;
+        }
+        
+        // Animate the scan line
+        setTimeout(() => {
+            scanLine.style.opacity = '0.7';
+            
+            // Move the scan line
+            const endPosition = isHorizontal ? 
+                { top: `${position}%`, left: '0' } : 
+                { left: `${position}%`, top: '0' };
+                
+            const animation = scanLine.animate([
+                { ...endPosition },
+                isHorizontal ? 
+                    { top: `${position}%`, left: '100%' } : 
+                    { left: `${position}%`, top: '100%' }
+            ], {
+                duration: 1500,
+                easing: 'linear'
+            });
+            
+            // Remove after animation completes
+            animation.onfinish = () => {
+                scanLine.style.opacity = '0';
+                setTimeout(() => {
+                    if (scanLine.parentNode) {
+                        scanLine.parentNode.removeChild(scanLine);
+                    }
+                }, 300);
+            };
+        }, 100);
+    }
 }
