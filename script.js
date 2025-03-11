@@ -46,6 +46,23 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Add footer 3D effects
     addFooterEffects();
+
+    initDynamicBackground();
+    
+    // Add holographic UI elements
+    addHolographicElements();
+    
+    // Add section transition effects
+    initSectionTransitions();
+    
+    // Add AI data stream visualization
+    initAIDataVisualization();
+    
+    // Add neural network background to About section
+    initAboutSectionEffects();
+    
+    // Add floating 3D logo
+    create3DLogo();
 });
 
 // Navigation menu toggle
@@ -1853,3 +1870,939 @@ function addFooterEffects() {
     
     animate();
 } 
+
+function initDynamicBackground() {
+    const body = document.querySelector('body');
+    
+    // Create a WebGL canvas for the background
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('dynamic-background');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '-2'; // Place behind particle background
+    
+    body.prepend(canvas);
+    
+    // Setup Three.js
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ 
+        canvas: canvas,
+        antialias: true,
+        alpha: true 
+    });
+    
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x000000, 0);
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+    
+    // Create a grid of neural activity
+    const gridGroup = new THREE.Group();
+    scene.add(gridGroup);
+    
+    // Neural layers
+    const layersCount = 5;
+    const nodesPerLayer = 10;
+    const layerDistance = 8;
+    const layers = [];
+    
+    // Create neural layers with nodes
+    for (let l = 0; l < layersCount; l++) {
+        const layer = new THREE.Group();
+        layer.position.z = -l * layerDistance - 15; // Position layers in distance
+        gridGroup.add(layer);
+        layers.push(layer);
+        
+        // Add nodes to layer
+        for (let i = 0; i < nodesPerLayer; i++) {
+            for (let j = 0; j < nodesPerLayer; j++) {
+                const nodeGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+                const nodeMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x3a86ff,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                
+                const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
+                
+                // Position in grid
+                node.position.x = (i - nodesPerLayer / 2) * 2;
+                node.position.y = (j - nodesPerLayer / 2) * 2;
+                
+                // Store data for animation
+                node.userData = {
+                    baseOpacity: 0.3,
+                    pulseSpeed: Math.random() * 2 + 1,
+                    active: false,
+                    activationDelay: Math.random() * 5,
+                    layer: l
+                };
+                
+                layer.add(node);
+            }
+        }
+    }
+    
+    // Create neural connections between layers
+    const connectionsMaterial = new THREE.LineBasicMaterial({
+        color: 0x3a86ff,
+        transparent: true,
+        opacity: 0.05
+    });
+    
+    const connections = [];
+    
+    // Connect each layer to the next
+    for (let l = 0; l < layersCount - 1; l++) {
+        const currentLayer = layers[l];
+        const nextLayer = layers[l + 1];
+        
+        // Connect a percentage of nodes between layers
+        for (let i = 0; i < currentLayer.children.length; i++) {
+            // Only connect some nodes for performance
+            if (Math.random() > 0.7) continue;
+            
+            const sourceNode = currentLayer.children[i];
+            
+            // Connect to random nodes in next layer
+            for (let j = 0; j < 2; j++) {
+                const targetIndex = Math.floor(Math.random() * nextLayer.children.length);
+                const targetNode = nextLayer.children[targetIndex];
+                
+                const points = [
+                    sourceNode.position.clone().add(sourceNode.parent.position),
+                    targetNode.position.clone().add(targetNode.parent.position)
+                ];
+                
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, connectionsMaterial);
+                
+                line.userData = {
+                    sourceNode: sourceNode,
+                    targetNode: targetNode,
+                    active: false,
+                    baseOpacity: 0.05
+                };
+                
+                gridGroup.add(line);
+                connections.push(line);
+            }
+        }
+    }
+    
+    // Add data pulses that travel along connections
+    const pulses = [];
+    const pulseCount = 30;
+    const pulseGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const pulseMaterial = new THREE.MeshBasicMaterial({
+        color: 0xff006e,
+        transparent: true,
+        opacity: 0.7
+    });
+    
+    for (let i = 0; i < pulseCount; i++) {
+        const pulse = new THREE.Mesh(pulseGeometry, pulseMaterial);
+        pulse.visible = false;
+        
+        pulse.userData = {
+            connection: null,
+            progress: 0,
+            speed: Math.random() * 0.02 + 0.01,
+            active: false
+        };
+        
+        gridGroup.add(pulse);
+        pulses.push(pulse);
+    }
+    
+    // Position camera
+    camera.position.z = 5;
+    
+    // Track mouse for interactive effects
+    const mouse = new THREE.Vector2();
+    let mouseInDocument = false;
+    
+    document.addEventListener('mousemove', (event) => {
+        // Convert mouse position to normalized device coordinates
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+        mouseInDocument = true;
+        
+        // Activate nodes closest to mouse
+        activateNodesNearMouse();
+    });
+    
+    document.addEventListener('mouseout', () => {
+        mouseInDocument = false;
+    });
+    
+    // Function to activate nodes near the mouse cursor
+    function activateNodesNearMouse() {
+        // Convert mouse position to world coordinates
+        const vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+        vector.unproject(camera);
+        
+        const dir = vector.sub(camera.position).normalize();
+        const distance = -camera.position.z / dir.z;
+        const pos = camera.position.clone().add(dir.multiplyScalar(distance));
+        
+        // Find closest nodes to activate
+        layers.forEach(layer => {
+            layer.children.forEach(node => {
+                const nodeWorldPos = new THREE.Vector3();
+                node.getWorldPosition(nodeWorldPos);
+                
+                // Calculate distance in the XY plane
+                const dist = Math.sqrt(
+                    Math.pow(nodeWorldPos.x - pos.x, 2) + 
+                    Math.pow(nodeWorldPos.y - pos.y, 2)
+                );
+                
+                // Activate nodes near mouse
+                if (dist < 3) {
+                    node.userData.active = true;
+                    node.material.opacity = 0.8;
+                    node.scale.set(2, 2, 2);
+                    
+                    // Activate connections from this node
+                    connections.forEach(conn => {
+                        if (conn.userData.sourceNode === node || conn.userData.targetNode === node) {
+                            conn.userData.active = true;
+                            conn.material.opacity = 0.3;
+                            
+                            // Fire a pulse on this connection
+                            if (Math.random() > 0.7) {
+                                const availablePulse = pulses.find(p => !p.userData.active);
+                                if (availablePulse) {
+                                    availablePulse.userData.active = true;
+                                    availablePulse.userData.connection = conn;
+                                    availablePulse.userData.progress = 0;
+                                    availablePulse.visible = true;
+                                }
+                            }
+                        }
+                    });
+                }
+            });
+        });
+    }
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        const time = Date.now() * 0.001;
+        
+        // Slowly rotate the entire grid
+        gridGroup.rotation.y = Math.sin(time * 0.1) * 0.2;
+        
+        // Animate neural nodes
+        layers.forEach(layer => {
+            layer.children.forEach(node => {
+                if (node.userData.active) {
+                    // Fade back to normal over time
+                    node.material.opacity *= 0.95;
+                    node.scale.x = Math.max(node.scale.x * 0.95, 1);
+                    node.scale.y = Math.max(node.scale.y * 0.95, 1);
+                    node.scale.z = Math.max(node.scale.z * 0.95, 1);
+                    
+                    if (node.material.opacity <= node.userData.baseOpacity + 0.05) {
+                        node.userData.active = false;
+                        node.material.opacity = node.userData.baseOpacity;
+                        node.scale.set(1, 1, 1);
+                    }
+                } else {
+                    // Random activation of nodes
+                    if (Math.random() < 0.001) {
+                        node.userData.active = true;
+                        node.material.opacity = 0.8;
+                        node.scale.set(1.5, 1.5, 1.5);
+                    }
+                    
+                    // Subtle pulse effect when inactive
+                    const pulse = 0.1 * Math.sin(time * node.userData.pulseSpeed + node.userData.layer * 10);
+                    node.material.opacity = node.userData.baseOpacity + pulse;
+                }
+            });
+        });
+        
+        // Animate connections
+        connections.forEach(connection => {
+            if (connection.userData.active) {
+                // Fade back to normal over time
+                connection.material.opacity *= 0.95;
+                
+                if (connection.material.opacity <= connection.userData.baseOpacity + 0.05) {
+                    connection.userData.active = false;
+                    connection.material.opacity = connection.userData.baseOpacity;
+                }
+            }
+        });
+        
+        // Animate pulses along connections
+        pulses.forEach(pulse => {
+            if (pulse.userData.active) {
+                const connection = pulse.userData.connection;
+                
+                pulse.userData.progress += pulse.userData.speed;
+                
+                if (pulse.userData.progress > 1) {
+                    pulse.userData.active = false;
+                    pulse.visible = false;
+                } else {
+                    // Get start and end positions from connection
+                    const sourcePos = connection.userData.sourceNode.position.clone()
+                        .add(connection.userData.sourceNode.parent.position);
+                    const targetPos = connection.userData.targetNode.position.clone()
+                        .add(connection.userData.targetNode.parent.position);
+                    
+                    // Interpolate position
+                    pulse.position.lerpVectors(sourcePos, targetPos, pulse.userData.progress);
+                }
+            }
+        });
+        
+        renderer.render(scene, camera);
+    }
+    
+    animate();
+}
+
+// Add holographic UI elements that appear to float above the page
+function addHolographicElements() {
+    // Add holographic scanner line that moves down the page
+    const scannerLine = document.createElement('div');
+    scannerLine.classList.add('holographic-scanner');
+    scannerLine.style.cssText = `
+        position: fixed;
+        left: 0;
+        width: 100%;
+        height: 2px;
+        background: linear-gradient(to right, 
+            rgba(58, 134, 255, 0), 
+            rgba(58, 134, 255, 0.8), 
+            rgba(58, 134, 255, 0));
+        z-index: 9997;
+        pointer-events: none;
+        box-shadow: 0 0 10px rgba(58, 134, 255, 0.8);
+    `;
+    document.body.appendChild(scannerLine);
+    
+    // Animate the scanner line
+    let scanDirection = 1;
+    let scannerPosition = 0;
+    
+    function animateScannerLine() {
+        scannerPosition += scanDirection * 1.5;
+        
+        // Reverse direction at top and bottom
+        if (scannerPosition > window.innerHeight || scannerPosition < 0) {
+            scanDirection *= -1;
+        }
+        
+        scannerLine.style.top = `${scannerPosition}px`;
+        requestAnimationFrame(animateScannerLine);
+    }
+    
+    animateScannerLine();
+    
+    // Add holographic corner elements to create a futuristic frame
+    const corners = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
+    
+    corners.forEach(position => {
+        const corner = document.createElement('div');
+        corner.classList.add(`holographic-corner-${position}`);
+        
+        // Determine position
+        const isTop = position.includes('top');
+        const isLeft = position.includes('left');
+        
+        corner.style.cssText = `
+            position: fixed;
+            ${isTop ? 'top' : 'bottom'}: 20px;
+            ${isLeft ? 'left' : 'right'}: 20px;
+            width: 50px;
+            height: 50px;
+            border-${isTop ? 'top' : 'bottom'}: 2px solid rgba(58, 134, 255, 0.8);
+            border-${isLeft ? 'left' : 'right'}: 2px solid rgba(58, 134, 255, 0.8);
+            border-${isTop ? 'bottom' : 'top'}-${isLeft ? 'right' : 'left'}-radius: 0;
+            z-index: 9997;
+            pointer-events: none;
+            opacity: 0.7;
+            box-shadow: 0 0 10px rgba(58, 134, 255, 0.5);
+        `;
+        
+        document.body.appendChild(corner);
+        
+        // Animate the corners with pulsing effect
+        setInterval(() => {
+            corner.style.boxShadow = `0 0 ${10 + Math.random() * 10}px rgba(58, 134, 255, ${0.3 + Math.random() * 0.5})`;
+        }, 1000 + Math.random() * 1000);
+    });
+    
+    // Add floating data points that appear randomly across the screen
+    setInterval(() => {
+        if (Math.random() > 0.7) {
+            createFloatingDataPoint();
+        }
+    }, 2000);
+    
+    function createFloatingDataPoint() {
+        const dataPoint = document.createElement('div');
+        const size = Math.random() * 40 + 20;
+        
+        // Random position on screen
+        const x = Math.random() * window.innerWidth;
+        const y = Math.random() * window.innerHeight;
+        
+        // Random data visualization style
+        const visualTypes = [
+            createBinaryText,
+            createCircleGraph,
+            createBarGraph,
+            createMatrixDisplay
+        ];
+        
+        const createVisual = visualTypes[Math.floor(Math.random() * visualTypes.length)];
+        createVisual(dataPoint, size);
+        
+        dataPoint.style.cssText = `
+            position: fixed;
+            top: ${y}px;
+            left: ${x}px;
+            z-index: 9996;
+            pointer-events: none;
+            transform: scale(0);
+            opacity: 0;
+            transition: transform 0.5s ease-out, opacity 0.5s ease-out;
+        `;
+        
+        document.body.appendChild(dataPoint);
+        
+        // Animate in
+        setTimeout(() => {
+            dataPoint.style.transform = 'scale(1)';
+            dataPoint.style.opacity = '0.8';
+        }, 10);
+        
+        // Remove after a few seconds
+        setTimeout(() => {
+            dataPoint.style.transform = 'scale(1.5)';
+            dataPoint.style.opacity = '0';
+            
+            setTimeout(() => {
+                document.body.removeChild(dataPoint);
+            }, 500);
+        }, 2000 + Math.random() * 3000);
+    }
+    
+    function createBinaryText(element, size) {
+        element.style.width = `${size * 4}px`;
+        element.style.height = `${size}px`;
+        element.style.color = 'rgba(58, 134, 255, 0.8)';
+        element.style.fontSize = '10px';
+        element.style.fontFamily = 'monospace';
+        element.style.textAlign = 'center';
+        
+        let binaryText = '';
+        for (let i = 0; i < size * 2; i++) {
+            binaryText += Math.round(Math.random());
+        }
+        
+        element.textContent = binaryText;
+    }
+    
+    function createCircleGraph(element, size) {
+        element.style.width = `${size}px`;
+        element.style.height = `${size}px`;
+        element.style.border = '1px solid rgba(58, 134, 255, 0.8)';
+        element.style.borderRadius = '50%';
+        element.style.boxShadow = '0 0 10px rgba(58, 134, 255, 0.5)';
+        
+        // Add an inner circle with percentage
+        const percent = Math.floor(Math.random() * 100);
+        const innerCircle = document.createElement('div');
+        innerCircle.style.cssText = `
+            width: 70%;
+            height: 70%;
+            border-radius: 50%;
+            background-color: rgba(58, 134, 255, 0.2);
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(58, 134, 255, 0.8);
+            font-family: monospace;
+            font-size: ${size / 4}px;
+        `;
+        innerCircle.textContent = `${percent}%`;
+        element.appendChild(innerCircle);
+    }
+    
+    function createBarGraph(element, size) {
+        element.style.width = `${size}px`;
+        element.style.height = `${size}px`;
+        element.style.display = 'flex';
+        element.style.alignItems = 'flex-end';
+        element.style.justifyContent = 'space-around';
+        element.style.border = '1px solid rgba(58, 134, 255, 0.5)';
+        
+        // Create bars
+        const barCount = 5;
+        for (let i = 0; i < barCount; i++) {
+            const bar = document.createElement('div');
+            const height = Math.random() * 90 + 10;
+            bar.style.cssText = `
+                width: ${size / barCount / 2}px;
+                height: ${height}%;
+                background-color: rgba(58, 134, 255, ${0.3 + Math.random() * 0.5});
+                box-shadow: 0 0 5px rgba(58, 134, 255, 0.5);
+            `;
+            element.appendChild(bar);
+        }
+    }
+    
+    function createMatrixDisplay(element, size) {
+        element.style.width = `${size}px`;
+        element.style.height = `${size}px`;
+        element.style.display = 'grid';
+        element.style.gridTemplateColumns = 'repeat(3, 1fr)';
+        element.style.gridTemplateRows = 'repeat(3, 1fr)';
+        element.style.gap = '2px';
+        element.style.padding = '2px';
+        element.style.border = '1px solid rgba(58, 134, 255, 0.5)';
+        
+        // Create grid cells
+        for (let i = 0; i < 9; i++) {
+            const cell = document.createElement('div');
+            const value = (Math.random() * 9.99).toFixed(1);
+            cell.style.cssText = `
+                background-color: rgba(58, 134, 255, ${0.1 + Math.random() * 0.3});
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: rgba(58, 134, 255, 0.8);
+                font-family: monospace;
+                font-size: ${size / 10}px;
+            `;
+            cell.textContent = value;
+            element.appendChild(cell);
+        }
+    }
+}
+
+// Create smooth transitions between sections with AI-themed effects
+function initSectionTransitions() {
+    const sections = document.querySelectorAll('section');
+    
+    // Create overlay for transitions
+    const transitionOverlay = document.createElement('div');
+    transitionOverlay.classList.add('transition-overlay');
+    transitionOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: radial-gradient(circle at center, rgba(58, 134, 255, 0.2), transparent 70%);
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9996;
+        transition: opacity 0.5s ease;
+    `;
+    document.body.appendChild(transitionOverlay);
+    
+    // Add a scanning line element for transitions
+    const scanLine = document.createElement('div');
+    scanLine.classList.add('scan-line');
+    scanLine.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 10px;
+        background: linear-gradient(to bottom, rgba(58, 134, 255, 0), rgba(58, 134, 255, 0.8), rgba(58, 134, 255, 0));
+        pointer-events: none;
+        opacity: 0;
+        z-index: 9997;
+        transform: translateY(-100%);
+        box-shadow: 0 0 20px rgba(58, 134, 255, 0.5);
+    `;
+    document.body.appendChild(scanLine);
+    
+    // Track scroll position for transitions
+    let currentSectionIndex = 0;
+    let isTransitioning = false;
+    
+    window.addEventListener('scroll', () => {
+        const scrollPosition = window.scrollY + (window.innerHeight / 2);
+        
+        // Find current section
+        let newSectionIndex = 0;
+        sections.forEach((section, index) => {
+            if (scrollPosition >= section.offsetTop && scrollPosition < section.offsetTop + section.offsetHeight) {
+                newSectionIndex = index;
+            }
+        });
+        
+        // If we've moved to a new section, trigger transition
+        if (newSectionIndex !== currentSectionIndex && !isTransitioning) {
+            triggerSectionTransition(newSectionIndex);
+            currentSectionIndex = newSectionIndex;
+        }
+    });
+    
+    function triggerSectionTransition(newIndex) {
+        isTransitioning = true;
+        
+        // Show overlay
+        transitionOverlay.style.opacity = '1';
+        
+        // Animate scan line
+        scanLine.style.opacity = '1';
+        scanLine.style.transform = 'translateY(0)';
+        
+        // Animate scan line down the page
+        let scanProgress = 0;
+        const scanInterval = setInterval(() => {
+            scanProgress += 2;
+            scanLine.style.top = `${scanProgress}vh`;
+            
+            if (scanProgress >= 100) {
+                clearInterval(scanInterval);
+                
+                // Hide elements after scan completes
+                scanLine.style.opacity = '0';
+                scanLine.style.transform = 'translateY(-100%)';
+                transitionOverlay.style.opacity = '0';
+                
+                // Reset for next transition
+                setTimeout(() => {
+                    scanLine.style.top = '0';
+                    isTransitioning = false;
+                }, 500);
+            }
+        }, 10);
+    }
+}
+
+// Create a visualization of AI processing data streams across the page
+function initAIDataVisualization() {
+    // Create a canvas for data streams
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('ai-data-streams');
+    canvas.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9995;
+    `;
+    
+    document.body.appendChild(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+    
+    // Data streams
+    class DataStream {
+        constructor() {
+            this.reset();
+        }
+        
+        reset() {
+            // Start from random edge of screen
+            const edge = Math.floor(Math.random() * 4);
+            
+            switch(edge) {
+                case 0: // Top
+                    this.x = Math.random() * canvas.width;
+                    this.y = 0;
+                    this.vx = (Math.random() - 0.5) * 2;
+                    this.vy = Math.random() * 1 + 0.5;
+                    break;
+                case 1: // Right
+                    this.x = canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = -(Math.random() * 1 + 0.5);
+                    this.vy = (Math.random() - 0.5) * 2;
+                    break;
+                case 2: // Bottom
+                    this.x = Math.random() * canvas.width;
+                    this.y = canvas.height;
+                    this.vx = (Math.random() - 0.5) * 2;
+                    this.vy = -(Math.random() * 1 + 0.5);
+                    break;
+                case 3: // Left
+                    this.x = 0;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = Math.random() * 1 + 0.5;
+                    this.vy = (Math.random() - 0.5) * 2;
+                    break;
+            }
+            
+            // Random properties
+            this.length = Math.random() * 100 + 50;
+            this.width = Math.random() * 2 + 1;
+            this.opacity = Math.random() * 0.3 + 0.1;
+            this.segments = [];
+            this.color = this.getRandomColor();
+            this.pulseSpeed = Math.random() * 2 + 1;
+        }
+        
+        getRandomColor() {
+            const colors = [
+                [58, 134, 255],   // Blue
+                [131, 56, 236],   // Purple
+                [255, 0, 110]     // Pink
+            ];
+            
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+        
+        update() {
+            // Update position
+            this.x += this.vx;
+            this.y += this.vy;
+            
+            // Add current position to segments
+            this.segments.unshift({ x: this.x, y: this.y });
+            
+            // Remove old segments to maintain length
+            if (this.segments.length > this.length) {
+                this.segments.pop();
+            }
+            
+            // Reset if out of bounds
+            if (this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
+                if (this.segments.length < 5) {
+                    this.reset();
+                }
+            }
+        }
+        
+        draw(time) {
+            if (this.segments.length < 2) return;
+            
+            // Pulse opacity based on time
+            const pulseOpacity = this.opacity * (0.7 + 0.3 * Math.sin(time * this.pulseSpeed));
+            
+            // Draw the stream
+            ctx.beginPath();
+            ctx.moveTo(this.segments[0].x, this.segments[0].y);
+            
+            for (let i = 1; i < this.segments.length; i++) {
+                ctx.lineTo(this.segments[i].x, this.segments[i].y);
+            }
+            
+            // Create gradient for fade-out effect
+            const gradient = ctx.createLinearGradient(
+                this.segments[0].x, this.segments[0].y,
+                this.segments[this.segments.length - 1].x, this.segments[this.segments.length - 1].y
+            );
+            
+            gradient.addColorStop(0, `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${pulseOpacity})`);
+            gradient.addColorStop(1, `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, 0)`);
+            
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = this.width;
+            ctx.stroke();
+            
+            // Draw data packets at random positions along the stream
+            if (Math.random() > 0.95) {
+                const packetIndex = Math.floor(Math.random() * (this.segments.length - 1));
+                if (packetIndex >= 0 && packetIndex < this.segments.length) {
+                    const packetPos = this.segments[packetIndex];
+                    
+                    ctx.beginPath();
+                    ctx.arc(packetPos.x, packetPos.y, this.width * 2, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${this.color[0]}, ${this.color[1]}, ${this.color[2]}, ${pulseOpacity * 2})`;
+                    ctx.fill();
+                }
+            }
+        }
+    }
+    
+    // Create streams
+    const streams = [];
+    const streamCount = 15;
+    
+    for (let i = 0; i < streamCount; i++) {
+        streams.push(new DataStream());
+    }
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const time = Date.now() * 0.001;
+        
+        // Update and draw streams
+        streams.forEach(stream => {
+            stream.update();
+            stream.draw(time);
+        });
+        
+        // Occasionally add new streams
+        if (Math.random() > 0.99) {
+            streams.push(new DataStream());
+            
+            // Remove old streams to prevent too many
+            if (streams.length > streamCount + 5) {
+                streams.shift();
+            }
+        }
+    }
+    
+    animate();
+}
+
+// Add neural network background to About section
+function initAboutSectionEffects() {
+    const aboutSection = document.getElementById('about');
+    if (!aboutSection) return;
+    
+    // Create canvas for neural network
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('about-bg-canvas');
+    canvas.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+    `;
+    
+    // Insert canvas at the beginning of the section
+    aboutSection.style.position = 'relative';
+    aboutSection.prepend(canvas);
+    
+    // Get section content and ensure it's above the canvas
+    const aboutContainer = aboutSection.querySelector('.container');
+    if (aboutContainer) {
+        aboutContainer.style.position = 'relative';
+        aboutContainer.style.zIndex = '1';
+    }
+    
+    // Setup canvas
+    const ctx = canvas.getContext('2d');
+    canvas.width = aboutSection.offsetWidth;
+    canvas.height = aboutSection.offsetHeight;
+    
+    // Handle resize
+    window.addEventListener('resize', () => {
+        canvas.width = aboutSection.offsetWidth;
+        canvas.height = aboutSection.offsetHeight;
+    });
+    
+    // Neural network nodes
+    const nodes = [];
+    const nodeCount = 50;
+    
+    for (let i = 0; i < nodeCount; i++) {
+        nodes.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            radius: Math.random() * 3 + 2,
+            color: getNodeColor(),
+            vx: (Math.random() - 0.5) * 0.5,
+            vy: (Math.random() - 0.5) * 0.5,
+            connections: []
+        });
+    }
+    
+    function getNodeColor() {
+        const colors = [
+            'rgba(58, 134, 255, 0.7)',
+            'rgba(131, 56, 236, 0.7)',
+            'rgba(255, 0, 110, 0.7)'
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+    
+    // Create connections between nodes
+    nodes.forEach((node, i) => {
+        for (let j = i + 1; j < nodes.length; j++) {
+            const other = nodes[j];
+            const dx = node.x - other.x;
+            const dy = node.y - other.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < canvas.width / 5) {
+                node.connections.push(j);
+            }
+        }
+    });
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Update node positions
+        nodes.forEach(node => {
+            node.x += node.vx;
+            node.y += node.vy;
+            
+            // Boundary checks
+            if (node.x < 0 || node.x > canvas.width) node.vx *= -1;
+            if (node.y < 0 || node.y > canvas.height) node.vy *= -1;
+        });
+        
+        // Draw connections
+        ctx.lineWidth = 0.5;
+        nodes.forEach((node, i) => {
+            node.connections.forEach(j => {
+                const other = nodes[j];
+                const dx = node.x - other.x;
+                const dy = node.y - other.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < canvas.width / 5) {
+                    const opacity = 1 - distance / (canvas.width / 5);
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(58, 134, 255, ${opacity * 0.2})`;
+                    ctx.moveTo(node.x, node.y);
+                    ctx.lineTo(other.x, other.y);
+                    ctx.stroke();
+                }
+            });
+        });
+        
+        // Draw nodes
+        nodes.forEach(node => {
+            ctx.beginPath();
+            ctx.fillStyle = node.color;
+            ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    }
+    
+    animate();
+}
