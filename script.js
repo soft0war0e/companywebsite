@@ -3225,7 +3225,7 @@ function create3DLogo() {
     }, 300);
 }
 
-// Improved AI text generation with optimized performance
+// Correct implementation of AI text generation effects
 function initAITextEffects() {
     // Find elements to apply the effect to
     const heroTitle = document.querySelector('.hero-content h1');
@@ -3233,11 +3233,11 @@ function initAITextEffects() {
     
     if (!heroTitle || !heroParagraph) return;
     
-    // Store original texts - use textContent for paragraph to avoid HTML issues
-    const originalTitle = heroTitle.innerHTML;
-    const originalParagraph = heroParagraph.textContent;
+    // Store original texts - keeping actual DOM structure
+    const originalTitleHtml = heroTitle.innerHTML;
+    const originalParagraphText = heroParagraph.textContent;
     
-    // Add styles only once
+    // Add keyframe animation styles if not already present
     if (!document.querySelector('style#ai-cursor-style')) {
         const style = document.createElement('style');
         style.id = 'ai-cursor-style';
@@ -3245,6 +3245,29 @@ function initAITextEffects() {
             @keyframes cursorBlink {
                 0%, 49% { opacity: 1; }
                 50%, 100% { opacity: 0; }
+            }
+            
+            @keyframes glitchText {
+                0% { transform: translate(0); }
+                20% { transform: translate(-2px, 2px); }
+                40% { transform: translate(-2px, -2px); }
+                60% { transform: translate(2px, 2px); }
+                80% { transform: translate(2px, -2px); }
+                100% { transform: translate(0); }
+            }
+            
+            .ai-thinking {
+                position: relative;
+                display: inline-block;
+                color: var(--primary-color);
+                margin-right: 8px;
+                font-family: monospace;
+                font-size: 0.9em;
+            }
+            
+            .ai-glitch {
+                animation: glitchText 0.3s ease;
+                display: inline-block;
             }
             
             .ai-cursor {
@@ -3256,112 +3279,125 @@ function initAITextEffects() {
                 position: relative;
                 top: 2px;
             }
-            
-            .ai-thinking {
-                position: relative;
-                display: inline-block;
-                color: var(--primary-color);
-                margin-right: 8px;
-                font-family: monospace;
-                font-size: 0.9em;
-                opacity: 1;
-                transition: opacity 0.5s ease;
-            }
         `;
         document.head.appendChild(style);
     }
     
-    // Optimized typing effect function
-    const createAITypingEffect = (element, text, delay = 0) => {
-        // Clear element content
-        const originalHTML = element.innerHTML;
-        element.innerHTML = '';
+    // Create a wrapper for the AI typing effect - completely rewritten for better HTML handling
+    const createAITypingEffect = (element, originalText, isHTML = false, delay = 0) => {
+        // Original content backup
+        const originalContent = element.innerHTML;
         
-        // Add AI thinking indicator
-        const aiThinking = document.createElement('span');
-        aiThinking.classList.add('ai-thinking');
-        aiThinking.textContent = '[AI]';
-        element.appendChild(aiThinking);
+        // Clear the element and add AI thinking indicator
+        element.innerHTML = '<span class="ai-thinking">[AI]</span>';
         
-        // Create cursor
+        // Add cursor at the end
         const cursor = document.createElement('span');
         cursor.classList.add('ai-cursor');
         cursor.textContent = '|';
         element.appendChild(cursor);
         
-        // Handle HTML for title element, but use text for paragraph
-        let processText = text;
-        let isTitle = element === heroTitle;
+        // Process content based on whether it's HTML or plain text
+        let contentToType = originalText;
+        let textNodes = [];
         
-        // If we're dealing with the HTML in title that has spans or other elements
-        if (isTitle) {
-            // Create a temporary element to handle HTML
-            const temp = document.createElement('div');
-            temp.innerHTML = text;
+        if (isHTML) {
+            // Create a temporary container to process HTML
+            const tempContainer = document.createElement('div');
+            tempContainer.innerHTML = originalText;
             
-            // Extract text and HTML structure
-            processText = temp.innerHTML;
+            // Function to extract text and tag information recursively
+            const processNode = (node) => {
+                if (node.nodeType === Node.TEXT_NODE) {
+                    // Text node - add each character as a separate item
+                    const text = node.textContent;
+                    for (let i = 0; i < text.length; i++) {
+                        textNodes.push({
+                            type: 'text',
+                            content: text[i]
+                        });
+                    }
+                } else if (node.nodeType === Node.ELEMENT_NODE) {
+                    // Element node - add opening tag
+                    textNodes.push({
+                        type: 'tagOpen',
+                        content: node.outerHTML.substring(0, node.outerHTML.indexOf('>') + 1)
+                    });
+                    
+                    // Process children
+                    Array.from(node.childNodes).forEach(processNode);
+                    
+                    // Add closing tag
+                    textNodes.push({
+                        type: 'tagClose',
+                        content: '</' + node.nodeName.toLowerCase() + '>'
+                    });
+                }
+            };
+            
+            // Process all child nodes
+            Array.from(tempContainer.childNodes).forEach(processNode);
+        } else {
+            // Plain text - add each character as a separate item
+            for (let i = 0; i < contentToType.length; i++) {
+                textNodes.push({
+                    type: 'text',
+                    content: contentToType[i]
+                });
+            }
         }
         
-        // Start typing after delay
+        // Start typing effect after delay
         setTimeout(() => {
-            let displayText = '';
             let currentIndex = 0;
+            let htmlContent = '<span class="ai-thinking">[AI]</span>';
             
-            // Function to type the next character
             function typeNext() {
-                if (currentIndex < processText.length) {
-                    // For titles, we handle HTML tags specially
-                    if (isTitle && processText[currentIndex] === '<') {
-                        // Find the end of this tag
-                        const endIndex = processText.indexOf('>', currentIndex);
-                        if (endIndex !== -1) {
-                            // Add the whole tag at once
-                            displayText += processText.substring(currentIndex, endIndex + 1);
-                            currentIndex = endIndex + 1;
+                if (currentIndex < textNodes.length) {
+                    const node = textNodes[currentIndex];
+                    
+                    // Process based on node type
+                    if (node.type === 'text') {
+                        // Add regular text character
+                        htmlContent += node.content;
+                        
+                        // Occasionally add glitch effect
+                        if (Math.random() > 0.95 && node.content.trim() !== '') {
+                            // Apply glitch to last character
+                            htmlContent = htmlContent.substring(0, htmlContent.length - 1) + 
+                                '<span class="ai-glitch">' + node.content + '</span>';
                             
-                            // Update the display immediately and continue
-                            element.innerHTML = displayText;
-                            element.appendChild(cursor);
-                            
-                            // Schedule next character with minimal delay
-                            setTimeout(typeNext, 10);
+                            // Add longer delay for "thinking"
+                            element.innerHTML = htmlContent + '<span class="ai-cursor">|</span>';
+                            currentIndex++;
+                            setTimeout(typeNext, Math.random() * 300 + 100);
                             return;
                         }
-                    }
-                    
-                    // Add next character
-                    displayText += processText[currentIndex];
-                    currentIndex++;
-                    
-                    // Update display
-                    if (isTitle) {
-                        // For HTML content
-                        element.innerHTML = displayText;
-                        element.appendChild(cursor);
                     } else {
-                        // For plain text
-                        aiThinking.insertAdjacentText('afterend', processText[currentIndex - 1]);
+                        // Add HTML tag (invisible to user but updates DOM)
+                        htmlContent += node.content;
                     }
                     
-                    // Randomize typing speed, but keep it fast enough to avoid lag
-                    const nextDelay = Math.random() * 30 + 20;
-                    setTimeout(typeNext, nextDelay);
-                } else {
-                    // Typing complete - fade out the AI indicator
-                    aiThinking.style.opacity = '0';
-                    setTimeout(() => {
-                        if (aiThinking.parentNode) {
-                            aiThinking.parentNode.removeChild(aiThinking);
-                        }
-                    }, 500);
+                    // Update element with current content and cursor
+                    element.innerHTML = htmlContent + '<span class="ai-cursor">|</span>';
                     
-                    // Keep cursor visible for a moment, then remove it
+                    currentIndex++;
+                    // Randomize typing speed slightly
+                    setTimeout(typeNext, Math.random() * 30 + 20);
+                } else {
+                    // Typing complete
                     setTimeout(() => {
-                        if (cursor.parentNode) {
-                            cursor.parentNode.removeChild(cursor);
-                        }
-                    }, 1000);
+                        // Remove AI thinking indicator
+                        element.innerHTML = element.innerHTML.replace('<span class="ai-thinking">[AI]</span>', '');
+                        
+                        // Remove cursor after a delay
+                        setTimeout(() => {
+                            const cursorElement = element.querySelector('.ai-cursor');
+                            if (cursorElement) {
+                                cursorElement.parentNode.removeChild(cursorElement);
+                            }
+                        }, 1000);
+                    }, 500);
                 }
             }
             
@@ -3370,30 +3406,32 @@ function initAITextEffects() {
         }, delay);
     };
     
-    // Apply effects with sequential timing
-    createAITypingEffect(heroTitle, originalTitle, 500);
-    createAITypingEffect(heroParagraph, originalParagraph, 2500);
+    // Apply the AI typing effect to hero elements
+    createAITypingEffect(heroTitle, originalTitleHtml, true, 500);
+    createAITypingEffect(heroParagraph, originalParagraphText, false, 2500);
     
     // Apply to section headers when they come into view
     const sectionHeaders = document.querySelectorAll('.section-header h2');
+    
+    const observerOptions = {
+        threshold: 0.5,
+        rootMargin: '0px'
+    };
     
     const sectionObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
                 const header = entry.target;
-                const originalText = header.innerHTML;
+                const headerHTML = header.innerHTML;
                 
-                // Apply AI typing effect
-                createAITypingEffect(header, originalText);
+                // Apply AI typing effect when section comes into view
+                createAITypingEffect(header, headerHTML, true);
                 
-                // Unobserve after triggering
+                // Unobserve after triggering the effect
                 sectionObserver.unobserve(header);
             }
         });
-    }, {
-        threshold: 0.5,
-        rootMargin: '0px'
-    });
+    }, observerOptions);
     
     // Observe all section headers
     sectionHeaders.forEach(header => {
