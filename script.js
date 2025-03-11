@@ -18,6 +18,12 @@ document.addEventListener('DOMContentLoaded', () => {
     initHero3D();
     initTechCanvas();
     
+    // Add interactive particle background
+    initParticleBackground();
+    
+    // Initialize cursor effects
+    initCursorEffects();
+    
     // Set up smooth scrolling
     setupSmoothScrolling();
     
@@ -25,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (contactForm) {
         setupContactForm();
     }
+    
+    // Initialize parallax effects
+    initParallaxEffects();
 });
 
 // Navigation menu toggle
@@ -143,7 +152,261 @@ function setupContactForm() {
     });
 }
 
-// Hero section 3D animation with Three.js
+// Add an interactive particle background that responds to mouse movement
+function initParticleBackground() {
+    const body = document.querySelector('body');
+    
+    // Create canvas element
+    const canvas = document.createElement('canvas');
+    canvas.classList.add('particle-background');
+    canvas.style.position = 'fixed';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '-1';
+    body.prepend(canvas);
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Set canvas to full window size
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    
+    // Resize canvas when window size changes
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+    });
+    
+    // Particle array
+    const particles = [];
+    const particleCount = 80;
+    
+    // Mouse position
+    let mouseX = 0;
+    let mouseY = 0;
+    
+    // Track mouse position
+    window.addEventListener('mousemove', (e) => {
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+    });
+    
+    // Particle class
+    class Particle {
+        constructor() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 5 + 1;
+            this.speedX = Math.random() * 1 - 0.5;
+            this.speedY = Math.random() * 1 - 0.5;
+            this.color = getRandomColor();
+        }
+        
+        update() {
+            // Move particles
+            this.x += this.speedX;
+            this.y += this.speedY;
+            
+            // Mouse interaction - particles are gently attracted to mouse position
+            const dx = mouseX - this.x;
+            const dy = mouseY - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance < 200) {
+                const forceDirectionX = dx / distance;
+                const forceDirectionY = dy / distance;
+                const force = (200 - distance) / 500;
+                
+                this.speedX += forceDirectionX * force;
+                this.speedY += forceDirectionY * force;
+            }
+            
+            // Limit speed
+            this.speedX = Math.min(Math.max(this.speedX, -1), 1);
+            this.speedY = Math.min(Math.max(this.speedY, -1), 1);
+            
+            // Boundary detection
+            if (this.x < 0 || this.x > canvas.width) {
+                this.speedX *= -1;
+            }
+            
+            if (this.y < 0 || this.y > canvas.height) {
+                this.speedY *= -1;
+            }
+        }
+        
+        draw() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+        }
+    }
+    
+    function getRandomColor() {
+        // Generate colors in blue/purple theme with transparency
+        const r = Math.floor(Math.random() * 50 + 50);  
+        const g = Math.floor(Math.random() * 100 + 50);
+        const b = Math.floor(Math.random() * 155 + 100);
+        const a = Math.random() * 0.5 + 0.1;
+        
+        return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
+    
+    // Initialize particles
+    function init() {
+        for (let i = 0; i < particleCount; i++) {
+            particles.push(new Particle());
+        }
+    }
+    
+    // Connect particles with lines
+    function connectParticles() {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i; j < particles.length; j++) {
+                const dx = particles[i].x - particles[j].x;
+                const dy = particles[i].y - particles[j].y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 150) {
+                    ctx.beginPath();
+                    ctx.strokeStyle = `rgba(58, 134, 255, ${0.15 * (1 - distance / 150)})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.moveTo(particles[i].x, particles[i].y);
+                    ctx.lineTo(particles[j].x, particles[j].y);
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    
+    // Animation loop
+    function animate() {
+        requestAnimationFrame(animate);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        for (let i = 0; i < particles.length; i++) {
+            particles[i].update();
+            particles[i].draw();
+        }
+        
+        connectParticles();
+    }
+    
+    init();
+    animate();
+}
+
+// Custom cursor effects
+function initCursorEffects() {
+    const body = document.querySelector('body');
+    
+    // Create cursor elements
+    const cursorDot = document.createElement('div');
+    cursorDot.classList.add('cursor-dot');
+    cursorDot.style.cssText = `
+        position: fixed;
+        width: 8px;
+        height: 8px;
+        background: var(--primary-color);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-50%, -50%);
+        transition: transform 0.1s ease;
+    `;
+    
+    const cursorRing = document.createElement('div');
+    cursorRing.classList.add('cursor-ring');
+    cursorRing.style.cssText = `
+        position: fixed;
+        width: 40px;
+        height: 40px;
+        border: 2px solid rgba(58, 134, 255, 0.5);
+        border-radius: 50%;
+        pointer-events: none;
+        z-index: 9998;
+        transform: translate(-50%, -50%);
+        transition: all 0.2s ease;
+    `;
+    
+    body.appendChild(cursorDot);
+    body.appendChild(cursorRing);
+    
+    // Track mouse movement
+    document.addEventListener('mousemove', (e) => {
+        cursorDot.style.left = `${e.clientX}px`;
+        cursorDot.style.top = `${e.clientY}px`;
+        
+        // The ring follows with a slight delay for a more dynamic effect
+        cursorRing.style.left = `${e.clientX}px`;
+        cursorRing.style.top = `${e.clientY}px`;
+    });
+    
+    // Add hover effects
+    const hoverElements = document.querySelectorAll('a, button, .service-card, .tech-item');
+    
+    hoverElements.forEach(element => {
+        element.addEventListener('mouseenter', () => {
+            cursorDot.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            cursorRing.style.width = '60px';
+            cursorRing.style.height = '60px';
+            cursorRing.style.borderColor = 'rgba(58, 134, 255, 0.8)';
+        });
+        
+        element.addEventListener('mouseleave', () => {
+            cursorDot.style.transform = 'translate(-50%, -50%) scale(1)';
+            cursorRing.style.width = '40px';
+            cursorRing.style.height = '40px';
+            cursorRing.style.borderColor = 'rgba(58, 134, 255, 0.5)';
+        });
+    });
+    
+    // Hide cursor when it leaves the window
+    document.addEventListener('mouseleave', () => {
+        cursorDot.style.opacity = '0';
+        cursorRing.style.opacity = '0';
+    });
+    
+    document.addEventListener('mouseenter', () => {
+        cursorDot.style.opacity = '1';
+        cursorRing.style.opacity = '1';
+    });
+}
+
+// Add parallax effects to various sections
+function initParallaxEffects() {
+    const sections = document.querySelectorAll('section');
+    
+    window.addEventListener('scroll', () => {
+        const scrollY = window.scrollY;
+        
+        sections.forEach(section => {
+            // Get section position relative to viewport
+            const sectionTop = section.offsetTop;
+            const sectionHeight = section.offsetHeight;
+            
+            // Check if section is visible
+            if (scrollY > sectionTop - window.innerHeight && scrollY < sectionTop + sectionHeight) {
+                const elements = section.querySelectorAll('.section-header, .service-card, .tech-item, .about-text, .about-stats');
+                
+                elements.forEach(element => {
+                    // Calculate parallax effect
+                    const speed = 0.1;
+                    const yPos = (scrollY - sectionTop) * speed;
+                    
+                    // Apply transform
+                    element.style.transform = `translateY(${yPos}px)`;
+                });
+            }
+        });
+    });
+}
+
+// Greatly enhanced Hero 3D animation with Three.js
 function initHero3D() {
     const canvas = document.getElementById('hero-canvas');
     if (!canvas) return;
@@ -175,230 +438,388 @@ function initHero3D() {
     directionalLight.position.set(10, 10, 10);
     scene.add(directionalLight);
     
-    // Creating a neural network-like structure
-    const particlesGeometry = new THREE.BufferGeometry();
-    const particlesCount = 200;
+    // Add point lights for dynamic lighting effects
+    const pointLightColors = [0x3a86ff, 0x8338ec, 0xff006e];
+    const pointLights = [];
     
-    const positions = new Float32Array(particlesCount * 3);
-    const colors = new Float32Array(particlesCount * 3);
-    
-    // Generate random positions and colors
-    for (let i = 0; i < particlesCount; i++) {
-        positions[i * 3] = (Math.random() - 0.5) * 6;
-        positions[i * 3 + 1] = (Math.random() - 0.5) * 6;
-        positions[i * 3 + 2] = (Math.random() - 0.5) * 6;
-        
-        // Blue-purple gradient for AI theme
-        colors[i * 3] = 0.2 + Math.random() * 0.2;     // R
-        colors[i * 3 + 1] = 0.3 + Math.random() * 0.3; // G
-        colors[i * 3 + 2] = 0.8 + Math.random() * 0.2; // B
-    }
-    
-    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-    
-    // Material
-    const particlesMaterial = new THREE.PointsMaterial({
-        size: 0.05,
-        vertexColors: true,
-        transparent: true,
-        opacity: 0.8
+    pointLightColors.forEach((color, index) => {
+        const light = new THREE.PointLight(color, 1, 10);
+        light.position.set(
+            Math.sin(Math.PI * 2 / 3 * index) * 5,
+            Math.cos(Math.PI * 2 / 3 * index) * 5,
+            2
+        );
+        scene.add(light);
+        pointLights.push(light);
     });
     
-    // Create the particles
-    const particles = new THREE.Points(particlesGeometry, particlesMaterial);
-    scene.add(particles);
+    // Create a more complex neural network structure
+    // Main brain structure
+    const brainGroup = new THREE.Group();
+    scene.add(brainGroup);
     
-    // Add lines to connect some particles (neural connections)
-    const connectionsMaterial = new THREE.LineBasicMaterial({ 
-        color: 0x8338ec,
+    // Create base sphere
+    const sphereGeometry = new THREE.SphereGeometry(2, 32, 32);
+    const sphereMaterial = new THREE.MeshPhongMaterial({
+        color: 0x1a1a2e,
+        transparent: true,
+        opacity: 0.1,
+        wireframe: true
+    });
+    
+    const baseSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    brainGroup.add(baseSphere);
+    
+    // Add inner sphere with glow effect
+    const innerSphereGeometry = new THREE.SphereGeometry(1.7, 32, 32);
+    const innerSphereMaterial = new THREE.MeshPhongMaterial({
+        color: 0x3a86ff,
+        emissive: 0x3a86ff,
+        emissiveIntensity: 0.5,
         transparent: true,
         opacity: 0.2
     });
     
-    // Create connections between nearby particles
-    const connectionsGeometry = new THREE.BufferGeometry();
-    const connectionPositions = [];
+    const innerSphere = new THREE.Mesh(innerSphereGeometry, innerSphereMaterial);
+    brainGroup.add(innerSphere);
     
-    // Find connections between nearby particles
-    for (let i = 0; i < particlesCount; i++) {
-        const posA = new THREE.Vector3(
-            positions[i * 3],
-            positions[i * 3 + 1],
-            positions[i * 3 + 2]
-        );
+    // Neural nodes
+    const nodesCount = 200;
+    const nodes = [];
+    const nodePositions = [];
+    
+    for (let i = 0; i < nodesCount; i++) {
+        // Create nodes at random positions on a sphere
+        const radius = 1.8 + Math.random() * 0.3;
+        const phi = Math.acos(2 * Math.random() - 1);
+        const theta = Math.random() * Math.PI * 2;
         
-        for (let j = i + 1; j < particlesCount; j++) {
-            const posB = new THREE.Vector3(
-                positions[j * 3],
-                positions[j * 3 + 1],
-                positions[j * 3 + 2]
-            );
-            
+        const x = radius * Math.sin(phi) * Math.cos(theta);
+        const y = radius * Math.sin(phi) * Math.sin(theta);
+        const z = radius * Math.cos(phi);
+        
+        const nodeGeometry = new THREE.SphereGeometry(0.02 + Math.random() * 0.03, 8, 8);
+        
+        // Use different colors for visual interest
+        const hue = 0.6 + Math.random() * 0.2; // Blue to purple in HSL
+        const color = new THREE.Color().setHSL(hue, 0.8, 0.5);
+        
+        const nodeMaterial = new THREE.MeshPhongMaterial({
+            color: color,
+            emissive: color,
+            emissiveIntensity: 0.5
+        });
+        
+        const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
+        node.position.set(x, y, z);
+        
+        // Store original position and random animation parameters
+        node.userData = {
+            originalPos: new THREE.Vector3(x, y, z),
+            pulseSpeed: Math.random() * 2 + 1,
+            orbitSpeed: Math.random() * 0.01 + 0.005,
+            orbitRadius: Math.random() * 0.1 + 0.05
+        };
+        
+        brainGroup.add(node);
+        nodes.push(node);
+        nodePositions.push(new THREE.Vector3(x, y, z));
+    }
+    
+    // Create neural connections
+    const connectionsGroup = new THREE.Group();
+    brainGroup.add(connectionsGroup);
+    
+    // Find connections between nearby nodes
+    const connections = [];
+    const connectionsMaterial = new THREE.LineBasicMaterial({
+        color: 0x3a86ff,
+        transparent: true,
+        opacity: 0.2
+    });
+    
+    for (let i = 0; i < nodes.length; i++) {
+        const nodeA = nodes[i];
+        const posA = nodePositions[i];
+        
+        // Connect to nearby nodes
+        for (let j = i + 1; j < nodes.length; j++) {
+            const posB = nodePositions[j];
             const distance = posA.distanceTo(posB);
             
-            // Only connect if they're close enough
-            if (distance < 1.5) {
-                connectionPositions.push(posA.x, posA.y, posA.z);
-                connectionPositions.push(posB.x, posB.y, posB.z);
+            if (distance < 0.8) {
+                const geometry = new THREE.BufferGeometry().setFromPoints([posA, posB]);
+                const line = new THREE.Line(geometry, connectionsMaterial);
+                
+                // Add pulse animation data
+                line.userData = {
+                    startNode: i,
+                    endNode: j,
+                    pulsePosition: 0,
+                    pulseSpeed: Math.random() * 0.04 + 0.01,
+                    active: Math.random() > 0.7 // Only some connections active at start
+                };
+                
+                connectionsGroup.add(line);
+                connections.push(line);
             }
         }
     }
     
-    connectionsGeometry.setAttribute(
-        'position', 
-        new THREE.Float32BufferAttribute(connectionPositions, 3)
-    );
-    
-    const connections = new THREE.LineSegments(connectionsGeometry, connectionsMaterial);
-    scene.add(connections);
-    
-    // Animated neural network node (center piece)
-    const sphereGeometry = new THREE.SphereGeometry(0.15, 32, 32);
-    const sphereMaterial = new THREE.MeshPhongMaterial({
-        color: 0x3a86ff,
-        emissive: 0x3a86ff,
-        emissiveIntensity: 0.5,
-        shininess: 100
+    // Add data packets that travel along connections
+    const dataPackets = [];
+    const packetGeometry = new THREE.SphereGeometry(0.04, 8, 8);
+    const packetMaterial = new THREE.MeshPhongMaterial({
+        color: 0xff006e,
+        emissive: 0xff006e,
+        emissiveIntensity: 0.8
     });
     
-    const mainSphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
-    scene.add(mainSphere);
-    
-    // Add a few more spheres as main nodes
-    const nodePositions = [
-        new THREE.Vector3(1.5, 1, 0),
-        new THREE.Vector3(-1.2, -0.8, 0.5),
-        new THREE.Vector3(0, 1.2, -1),
-        new THREE.Vector3(-1, 0.5, 1)
-    ];
-    
-    const nodes = [];
-    
-    nodePositions.forEach(position => {
-        const nodeGeometry = new THREE.SphereGeometry(0.1, 24, 24);
-        const nodeMaterial = new THREE.MeshPhongMaterial({
-            color: 0xff006e,
-            emissive: 0xff006e,
-            emissiveIntensity: 0.3,
-            shininess: 80
-        });
+    // Create initial data packets
+    for (let i = 0; i < 20; i++) {
+        if (connections.length === 0) break;
         
-        const node = new THREE.Mesh(nodeGeometry, nodeMaterial);
-        node.position.copy(position);
-        scene.add(node);
-        nodes.push(node);
-    });
-    
-    // Connect main nodes
-    const nodeConnectionsGeometry = new THREE.BufferGeometry();
-    const nodeConnectionPositions = [];
-    
-    // Connect center to all nodes
-    nodes.forEach(node => {
-        nodeConnectionPositions.push(0, 0, 0);
-        nodeConnectionPositions.push(
-            node.position.x,
-            node.position.y,
-            node.position.z
-        );
-    });
-    
-    // Connect nodes to each other
-    for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-            nodeConnectionPositions.push(
-                nodes[i].position.x,
-                nodes[i].position.y,
-                nodes[i].position.z
-            );
-            nodeConnectionPositions.push(
-                nodes[j].position.x,
-                nodes[j].position.y,
-                nodes[j].position.z
-            );
-        }
+        const packet = new THREE.Mesh(packetGeometry, packetMaterial);
+        
+        // Assign to a random connection
+        const connectionIndex = Math.floor(Math.random() * connections.length);
+        const connection = connections[connectionIndex];
+        
+        packet.userData = {
+            connection: connection,
+            progress: Math.random(), // Start at random position
+            speed: Math.random() * 0.01 + 0.005
+        };
+        
+        packet.visible = connection.userData.active;
+        brainGroup.add(packet);
+        dataPackets.push(packet);
     }
     
-    nodeConnectionsGeometry.setAttribute(
-        'position', 
-        new THREE.Float32BufferAttribute(nodeConnectionPositions, 3)
-    );
+    // Add orbiting outer elements
+    const orbitingElementsCount = 5;
+    const orbitingElements = [];
     
-    const nodeConnectionsMaterial = new THREE.LineBasicMaterial({ 
-        color: 0xff006e,
-        transparent: true,
-        opacity: 0.4
+    for (let i = 0; i < orbitingElementsCount; i++) {
+        const geometry = new THREE.IcosahedronGeometry(0.2, 0);
+        const material = new THREE.MeshPhongMaterial({
+            color: 0x8338ec,
+            wireframe: true,
+            transparent: true,
+            opacity: 0.8
+        });
+        
+        const element = new THREE.Mesh(geometry, material);
+        
+        // Position in orbit
+        const orbitRadius = 3;
+        const angle = (i / orbitingElementsCount) * Math.PI * 2;
+        
+        element.position.x = Math.cos(angle) * orbitRadius;
+        element.position.y = Math.sin(angle) * orbitRadius;
+        element.position.z = (Math.random() - 0.5) * 2;
+        
+        element.userData = {
+            orbitSpeed: 0.005 + Math.random() * 0.01,
+            orbitRadius: orbitRadius,
+            orbitAngle: angle,
+            rotationSpeed: {
+                x: Math.random() * 0.02,
+                y: Math.random() * 0.02,
+                z: Math.random() * 0.02
+            }
+        };
+        
+        scene.add(element);
+        orbitingElements.push(element);
+    }
+    
+    // Add holographic rings
+    const ringsCount = 3;
+    const rings = [];
+    
+    for (let i = 0; i < ringsCount; i++) {
+        const ringGeometry = new THREE.TorusGeometry(2.2 + i * 0.3, 0.03, 16, 100);
+        const ringMaterial = new THREE.MeshPhongMaterial({
+            color: 0x3a86ff,
+            emissive: 0x3a86ff,
+            emissiveIntensity: 0.5,
+            transparent: true,
+            opacity: 0.3,
+            side: THREE.DoubleSide
+        });
+        
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        
+        // Create random rotation axis
+        ring.userData = {
+            rotationAxis: new THREE.Vector3(
+                Math.random() - 0.5,
+                Math.random() - 0.5,
+                Math.random() - 0.5
+            ).normalize(),
+            rotationSpeed: Math.random() * 0.003 + 0.001
+        };
+        
+        brainGroup.add(ring);
+        rings.push(ring);
+    }
+    
+    // Interactive elements - respond to mouse movement
+    let mouseX = 0, mouseY = 0;
+    let targetX = 0, targetY = 0;
+    
+    document.addEventListener('mousemove', (event) => {
+        // Normalize mouse position to -1 to 1
+        mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
     });
     
-    const nodeConnections = new THREE.LineSegments(nodeConnectionsGeometry, nodeConnectionsMaterial);
-    scene.add(nodeConnections);
-    
     // Position camera
-    camera.position.z = 4;
+    camera.position.z = 5;
     
     // Animate the scene
     function animate() {
         requestAnimationFrame(animate);
         
-        // Rotate the entire neural network
-        particles.rotation.y += 0.002;
-        particles.rotation.x += 0.001;
-        connections.rotation.y += 0.002;
-        connections.rotation.x += 0.001;
-        
-        // Pulse the main node
         const time = Date.now() * 0.001;
-        mainSphere.scale.x = 1 + 0.2 * Math.sin(time);
-        mainSphere.scale.y = 1 + 0.2 * Math.sin(time);
-        mainSphere.scale.z = 1 + 0.2 * Math.sin(time);
         
-        // Animate the connection nodes
+        // Smooth mouse following
+        targetX += (mouseX - targetX) * 0.05;
+        targetY += (mouseY - targetY) * 0.05;
+        
+        // Rotate the brain group based on mouse position
+        brainGroup.rotation.y = targetX * 0.5;
+        brainGroup.rotation.x = targetY * 0.5;
+        
+        // Animate point lights
+        pointLights.forEach((light, index) => {
+            const angle = time * 0.5 + (index * Math.PI * 2 / pointLights.length);
+            light.position.x = Math.sin(angle) * 5;
+            light.position.y = Math.cos(angle) * 5;
+            light.intensity = 0.5 + 0.5 * Math.sin(time * 2 + index);
+        });
+        
+        // Animate neural nodes
         nodes.forEach((node, index) => {
-            node.position.y += Math.sin(time + index) * 0.003;
-            node.position.x += Math.cos(time + index * 0.6) * 0.003;
+            const originalPos = node.userData.originalPos;
+            const pulseSpeed = node.userData.pulseSpeed;
+            const orbitSpeed = node.userData.orbitSpeed;
+            const orbitRadius = node.userData.orbitRadius;
             
-            // Reset position if it moves too far
-            const dist = node.position.distanceTo(nodePositions[index]);
-            if (dist > 0.3) {
-                node.position.lerp(nodePositions[index], 0.05);
+            // Orbital movement
+            const orbitAngle = time * orbitSpeed;
+            
+            const x = originalPos.x + Math.sin(orbitAngle) * orbitRadius;
+            const y = originalPos.y + Math.cos(orbitAngle) * orbitRadius;
+            const z = originalPos.z + Math.sin(orbitAngle + Math.PI/2) * orbitRadius;
+            
+            node.position.set(x, y, z);
+            
+            // Pulse size
+            const scale = 1 + 0.3 * Math.sin(time * pulseSpeed);
+            node.scale.set(scale, scale, scale);
+            
+            // Randomly activate connections
+            if (Math.random() < 0.001) {
+                connections.forEach(conn => {
+                    if (conn.userData.startNode === index || conn.userData.endNode === index) {
+                        conn.userData.active = true;
+                        
+                        // Make packets on this connection visible
+                        dataPackets.forEach(packet => {
+                            if (packet.userData.connection === conn) {
+                                packet.visible = true;
+                            }
+                        });
+                    }
+                });
             }
         });
         
-        // Update the node connections
-        const nodeConnectionPositions = [];
-        
-        // Connect center to all nodes
-        nodes.forEach(node => {
-            nodeConnectionPositions.push(0, 0, 0);
-            nodeConnectionPositions.push(
-                node.position.x,
-                node.position.y,
-                node.position.z
-            );
+        // Animate connections
+        connections.forEach(connection => {
+            if (!connection.userData.active) return;
+            
+            connection.userData.pulsePosition += connection.userData.pulseSpeed;
+            
+            if (connection.userData.pulsePosition > 1) {
+                connection.userData.pulsePosition = 0;
+                
+                // Randomly deactivate
+                if (Math.random() < 0.1) {
+                    connection.userData.active = false;
+                    
+                    // Hide packets on this connection
+                    dataPackets.forEach(packet => {
+                        if (packet.userData.connection === connection) {
+                            packet.visible = false;
+                        }
+                    });
+                }
+            }
+            
+            // Update connection opacity for pulse effect
+            const pulse = Math.sin(connection.userData.pulsePosition * Math.PI);
+            connection.material.opacity = 0.1 + 0.4 * pulse;
         });
         
-        // Connect nodes to each other
-        for (let i = 0; i < nodes.length; i++) {
-            for (let j = i + 1; j < nodes.length; j++) {
-                nodeConnectionPositions.push(
-                    nodes[i].position.x,
-                    nodes[i].position.y,
-                    nodes[i].position.z
-                );
-                nodeConnectionPositions.push(
-                    nodes[j].position.x,
-                    nodes[j].position.y,
-                    nodes[j].position.z
-                );
+        // Animate data packets
+        dataPackets.forEach(packet => {
+            const connection = packet.userData.connection;
+            
+            if (!connection.userData.active) {
+                packet.visible = false;
+                return;
             }
-        }
+            
+            packet.userData.progress += packet.userData.speed;
+            
+            if (packet.userData.progress > 1) {
+                packet.userData.progress = 0;
+            }
+            
+            const startNodeIndex = connection.userData.startNode;
+            const endNodeIndex = connection.userData.endNode;
+            
+            const startPos = nodes[startNodeIndex].position;
+            const endPos = nodes[endNodeIndex].position;
+            
+            // Interpolate position
+            packet.position.lerpVectors(startPos, endPos, packet.userData.progress);
+            packet.visible = connection.userData.active;
+        });
         
-        nodeConnections.geometry.setAttribute(
-            'position', 
-            new THREE.Float32BufferAttribute(nodeConnectionPositions, 3)
-        );
-        nodeConnections.geometry.attributes.position.needsUpdate = true;
+        // Animate orbiting elements
+        orbitingElements.forEach(element => {
+            // Update orbit position
+            element.userData.orbitAngle += element.userData.orbitSpeed;
+            const radius = element.userData.orbitRadius;
+            
+            element.position.x = Math.cos(element.userData.orbitAngle) * radius;
+            element.position.y = Math.sin(element.userData.orbitAngle) * radius;
+            
+            // Rotate the element
+            element.rotation.x += element.userData.rotationSpeed.x;
+            element.rotation.y += element.userData.rotationSpeed.y;
+            element.rotation.z += element.userData.rotationSpeed.z;
+        });
+        
+        // Animate holographic rings
+        rings.forEach(ring => {
+            const axis = ring.userData.rotationAxis;
+            const speed = ring.userData.rotationSpeed;
+            
+            ring.rotateOnAxis(axis, speed);
+            
+            // Pulse opacity
+            ring.material.opacity = 0.1 + 0.2 * Math.sin(time * 2);
+        });
+        
+        // Pulse inner sphere
+        innerSphere.scale.x = 1 + 0.1 * Math.sin(time);
+        innerSphere.scale.y = 1 + 0.1 * Math.sin(time);
+        innerSphere.scale.z = 1 + 0.1 * Math.sin(time);
         
         renderer.render(scene, camera);
     }
@@ -406,7 +827,7 @@ function initHero3D() {
     animate();
 }
 
-// Technologies section visualization
+// Enhanced technologies section visualization
 function initTechCanvas() {
     const container = document.getElementById('tech-canvas-container');
     if (!container) return;
